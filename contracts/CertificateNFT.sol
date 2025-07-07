@@ -52,7 +52,7 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
     function isRevoked(uint256 tokenId) public view returns (bool) {
         return _revoked[tokenId];
     }
-
+    
     function expireCertificate(uint256 tokenId) public onlyOwner {
         require(_exists(tokenId), "Certificate does not exist");
         require(isExpired(tokenId), "Certificate not yet expired");
@@ -101,7 +101,7 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         for (uint256 i = 0; i < count; i++) {
             uint256 tokenId = expiredTokens[i]; // Get the token ID of the expired token
             if (!_expired[tokenId] && isExpired(tokenId)) {
-                _expired[tokenId] = true; // Mark the token as expired
+                expireCertificate(tokenId); // Expire the certificate if it is not already expired
             }
         }
 
