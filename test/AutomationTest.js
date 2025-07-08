@@ -14,7 +14,7 @@ describe("CertificateNFT - Chainlink Automation Test", function () {
   });
 
   it("Should expire only the certificate that passed its expiration", async function () {
-    const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000); // Current timestamp in seconds
 
     // Cert A: expires in 1 minute
     const certA = await contract.mintCertificate(

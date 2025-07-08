@@ -28,8 +28,8 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
     constructor() ERC721("CertificateNFT", "CERT") Ownable() {}
 
     function mintCertificate(address recipient, string memory metadataURI, uint256 expirationTimestamps) public onlyOwner returns (uint256) {
-        _tokenIds++;
-        uint256 newTokenId = _tokenIds;
+        _tokenIds++; // Increment the token ID for each new certificate
+        uint256 newTokenId = _tokenIds; // Generate a new token ID
 
         _mint(recipient, newTokenId); // Mint the NFT to the recipient
         _setTokenURI(newTokenId, metadataURI); // Set metadata URI for the certificate
@@ -52,11 +52,14 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
     function isRevoked(uint256 tokenId) public view returns (bool) {
         return _revoked[tokenId];
     }
+
+    event CertificateExpired(uint256 tokenId);
     
     function expireCertificate(uint256 tokenId) public onlyOwner {
         require(_exists(tokenId), "Certificate does not exist");
         require(isExpired(tokenId), "Certificate not yet expired");
         _expired[tokenId] = true;
+        emit CertificateExpired(tokenId); // Emit event when a certificate is expired
     }
 
     function isExpiredOfficial(uint256 tokenId) public view returns (bool) {
@@ -68,6 +71,7 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
 
+    
     function checkUpkeep(bytes calldata) external view override returns (bool upkeepNeeded, bytes memory performData) {
         uint256 tokensToScan = 10; // Number of tokens to scan in one upkeep
         uint256 end = _scanIndex + tokensToScan; // Calculate the end index for scanning
@@ -112,4 +116,3 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         }
     }
 }
-
