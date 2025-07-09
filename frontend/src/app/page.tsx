@@ -3,7 +3,14 @@
 import type React from "react";
 
 import { useState } from "react";
-import { Search, Shield, CheckCircle, AlertCircle, User } from "lucide-react";
+import {
+  Search,
+  Shield,
+  CheckCircle,
+  AlertCircle,
+  User,
+  Wallet,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +28,7 @@ export default function CertificateVerification() {
   const [verificationStatus, setVerificationStatus] = useState<
     "idle" | "loading" | "valid" | "invalid"
   >("idle");
+
   type CertificateData = {
     id: string;
     holder: string;
@@ -102,7 +110,20 @@ export default function CertificateVerification() {
             align="end"
           >
             <DropdownMenuItem className="p-0">
-              <ConnectKitButton />
+              <ConnectKitButton.Custom>
+                {({ show }) => {
+                  return (
+                    <Button
+                      onClick={show}
+                      variant="outline"
+                      className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 text-white hover:text-black hover:cursor-pointer"
+                    >
+                      <Wallet className="h-4 w-4" />
+                      <span>Connect Wallet</span>
+                    </Button>
+                  );
+                }}
+              </ConnectKitButton.Custom>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -163,7 +184,7 @@ export default function CertificateVerification() {
           {verificationStatus !== "idle" &&
             verificationStatus !== "loading" && (
               <Card
-                className={`bg-white/10 backdrop-blur-md border-white/20 shadow-2xl transition-all duration-500 ${
+                className={`bg-white/10 backdrop-blur-md border-white/20 shadow-2xl transition-all duration-500 mb-5 ${
                   verificationStatus === "valid"
                     ? "border-green-400/50"
                     : "border-red-400/50"
