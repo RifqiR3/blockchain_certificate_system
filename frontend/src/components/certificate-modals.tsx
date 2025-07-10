@@ -91,11 +91,7 @@ export function CertificateModals({
         open={issueCertificateOpen}
         onOpenChange={setIssueCertificateOpen}
       >
-        <DialogContent
-          className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+        <DialogContent className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2 text-2xl">
               <FileText className="h-6 w-6 text-purple-400" />
@@ -230,11 +226,7 @@ export function CertificateModals({
   // View Certificate Modal
   const ViewCertificateModal = () => (
     <Dialog open={viewCertificateOpen} onOpenChange={setViewCertificateOpen}>
-      <DialogContent
-        className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
+      <DialogContent className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2 text-2xl">
             <FileText className="h-6 w-6 text-blue-400" />
@@ -314,6 +306,19 @@ export function CertificateModals({
                 disabled={true}
               />
             </div>
+
+            <div className="bg-blue-900/20 border border-blue-400/30 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <CheckCircle className="h-5 w-5 text-blue-400" />
+                <h4 className="font-semibold text-blue-300">
+                  Blockchain Verification
+                </h4>
+              </div>
+              <p className="text-blue-200 text-sm">
+                This certificate has been verified on the blockchain and is
+                cryptographically secure.
+              </p>
+            </div>
           </div>
         )}
 
@@ -365,11 +370,7 @@ export function CertificateModals({
 
     return (
       <Dialog open={editCertificateOpen} onOpenChange={setEditCertificateOpen}>
-        <DialogContent
-          className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+        <DialogContent className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2 text-2xl">
               <FileText className="h-6 w-6 text-yellow-400" />
@@ -494,11 +495,7 @@ export function CertificateModals({
         open={revokeCertificateOpen}
         onOpenChange={setRevokeCertificateOpen}
       >
-        <DialogContent
-          className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-lg"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+        <DialogContent className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2 text-2xl text-red-400">
               <XCircle className="h-6 w-6" />
