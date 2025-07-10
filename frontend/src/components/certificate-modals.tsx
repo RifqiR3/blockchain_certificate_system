@@ -1,0 +1,585 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { FileText, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { CertificateFileUpload } from "./certificate-file-upload";
+
+interface Certificate {
+  id: string;
+  holder: string;
+  course: string;
+  issueDate: string;
+  status: string;
+  expiryDate?: string;
+  issuer?: string;
+  description?: string;
+  ipfsHash?: string;
+}
+
+interface CertificateModalsProps {
+  issueCertificateOpen: boolean;
+  setIssueCertificateOpen: (open: boolean) => void;
+  viewCertificateOpen: boolean;
+  setViewCertificateOpen: (open: boolean) => void;
+  editCertificateOpen: boolean;
+  setEditCertificateOpen: (open: boolean) => void;
+  revokeCertificateOpen: boolean;
+  setRevokeCertificateOpen: (open: boolean) => void;
+  selectedCertificate: Certificate | null;
+}
+
+export function CertificateModals({
+  issueCertificateOpen,
+  setIssueCertificateOpen,
+  viewCertificateOpen,
+  setViewCertificateOpen,
+  editCertificateOpen,
+  setEditCertificateOpen,
+  revokeCertificateOpen,
+  setRevokeCertificateOpen,
+  selectedCertificate,
+}: CertificateModalsProps) {
+  // Issue Certificate Modal
+  const IssueCertificateModal = () => {
+    const [localFormData, setLocalFormData] = useState({
+      holder: "",
+      course: "",
+      issueDate: "",
+      expiryDate: "",
+      description: "",
+      ipfsHash: "",
+    });
+
+    // Reset form when modal opens
+    useEffect(() => {
+      if (issueCertificateOpen) {
+        setLocalFormData({
+          holder: "",
+          course: "",
+          issueDate: "",
+          expiryDate: "",
+          description: "",
+          ipfsHash: "",
+        });
+      }
+    }, [issueCertificateOpen]);
+
+    const handleLocalInputChange = (field: string, value: string) => {
+      setLocalFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleSubmit = () => {
+      console.log("Issuing certificate:", localFormData);
+      setIssueCertificateOpen(false);
+    };
+
+    return (
+      <Dialog
+        open={issueCertificateOpen}
+        onOpenChange={setIssueCertificateOpen}
+      >
+        <DialogContent
+          className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-2xl">
+              <FileText className="h-6 w-6 text-purple-400" />
+              <span>Issue New Certificate</span>
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create a new certificate on the blockchain. All fields are
+              required.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="holder" className="text-slate-300">
+                  Holder Wallet Address
+                </Label>
+                <Input
+                  id="holder"
+                  placeholder="0x..."
+                  value={localFormData.holder}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleLocalInputChange("holder", e.target.value);
+                  }}
+                  className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="course" className="text-slate-300">
+                  Course/Certificate Name
+                </Label>
+                <Input
+                  id="course"
+                  placeholder="e.g., Advanced Smart Contract Development"
+                  value={localFormData.course}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleLocalInputChange("course", e.target.value);
+                  }}
+                  className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="issueDate" className="text-slate-300">
+                  Issue Date
+                </Label>
+                <Input
+                  id="issueDate"
+                  type="date"
+                  value={localFormData.issueDate}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleLocalInputChange("issueDate", e.target.value);
+                  }}
+                  className="bg-slate-800/50 border-slate-600 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="expiryDate" className="text-slate-300">
+                  Expiry Date (Optional)
+                </Label>
+                <Input
+                  id="expiryDate"
+                  type="date"
+                  value={localFormData.expiryDate}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleLocalInputChange("expiryDate", e.target.value);
+                  }}
+                  className="bg-slate-800/50 border-slate-600 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-slate-300">
+                Description (Optional)
+              </Label>
+              <Textarea
+                id="description"
+                placeholder="Additional details about the certificate..."
+                value={localFormData.description}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleLocalInputChange("description", e.target.value);
+                }}
+                className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 min-h-[100px]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="certificate-file" className="text-slate-300">
+                Certificate File *
+              </Label>
+              <CertificateFileUpload
+                value={localFormData.ipfsHash}
+                onChange={(hash) => handleLocalInputChange("ipfsHash", hash)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIssueCertificateOpen(false)}
+              className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              disabled={
+                !localFormData.holder ||
+                !localFormData.course ||
+                !localFormData.issueDate ||
+                !localFormData.ipfsHash
+              }
+            >
+              Issue Certificate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // View Certificate Modal
+  const ViewCertificateModal = () => (
+    <Dialog open={viewCertificateOpen} onOpenChange={setViewCertificateOpen}>
+      <DialogContent
+        className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2 text-2xl">
+            <FileText className="h-6 w-6 text-blue-400" />
+            <span>Certificate Details</span>
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            View complete certificate information and blockchain details.
+          </DialogDescription>
+        </DialogHeader>
+
+        {selectedCertificate && (
+          <div className="space-y-6 py-4">
+            <div className="bg-slate-800/30 rounded-lg p-4 border border-slate-600">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">
+                  {selectedCertificate.course}
+                </h3>
+                <Badge
+                  variant={
+                    selectedCertificate.status === "active"
+                      ? "default"
+                      : "destructive"
+                  }
+                >
+                  {selectedCertificate.status}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-400">Certificate ID</p>
+                  <p className="font-mono text-purple-400">
+                    {selectedCertificate.id}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Issue Date</p>
+                  <p className="text-white">{selectedCertificate.issueDate}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <p className="text-slate-400">Holder Address</p>
+                  <p className="font-mono text-green-400 break-all">
+                    {selectedCertificate.holder}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Issuer</p>
+                  <p className="text-white">
+                    {selectedCertificate.issuer || "Blockchain University"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Status</p>
+                  <div className="flex items-center space-x-2">
+                    {selectedCertificate.status === "active" ? (
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-400" />
+                    )}
+                    <span className="capitalize">
+                      {selectedCertificate.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Certificate File Display */}
+            <div className="space-y-2">
+              <Label className="text-slate-300">Certificate File</Label>
+              <CertificateFileUpload
+                value={
+                  selectedCertificate?.ipfsHash ||
+                  "QmExampleHashForDemo123456789"
+                }
+                showPreview={true}
+                disabled={true}
+              />
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setViewCertificateOpen(false)}
+            className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700"
+          >
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // Edit Certificate Modal
+  const EditCertificateModal = () => {
+    const [localFormData, setLocalFormData] = useState({
+      course: "",
+      description: "",
+      ipfsHash: "",
+    });
+
+    // Initialize form with selected certificate data when modal opens
+    useEffect(() => {
+      if (editCertificateOpen && selectedCertificate) {
+        setLocalFormData({
+          course: selectedCertificate.course || "",
+          description: selectedCertificate.description || "",
+          ipfsHash: selectedCertificate.ipfsHash || "",
+        });
+      }
+    }, [editCertificateOpen, selectedCertificate]);
+
+    const handleLocalInputChange = (field: string, value: string) => {
+      setLocalFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleEditCertificate = () => {
+      // Handle certificate edit logic here
+      console.log(
+        "Editing certificate:",
+        selectedCertificate?.id,
+        localFormData
+      );
+      setEditCertificateOpen(false);
+    };
+
+    return (
+      <Dialog open={editCertificateOpen} onOpenChange={setEditCertificateOpen}>
+        <DialogContent
+          className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-2xl"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-2xl">
+              <FileText className="h-6 w-6 text-yellow-400" />
+              <span>Edit Certificate</span>
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Modify certificate details. Changes will be recorded on the
+              blockchain.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="bg-yellow-900/20 border border-yellow-400/30 rounded-lg p-3">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                <p className="text-yellow-300 text-sm">
+                  Editing will create a new transaction on the blockchain.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-holder" className="text-slate-300">
+                  Holder Wallet Address
+                </Label>
+                <Input
+                  id="edit-holder"
+                  value={selectedCertificate?.holder || ""}
+                  disabled
+                  className="bg-slate-800/30 border-slate-600 text-slate-400"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-course" className="text-slate-300">
+                  Course/Certificate Name
+                </Label>
+                <Input
+                  id="edit-course"
+                  value={localFormData.course || ""}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleLocalInputChange("course", e.target.value);
+                  }}
+                  className="bg-slate-800/50 border-slate-600 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description" className="text-slate-300">
+                Description
+              </Label>
+              <Textarea
+                id="edit-description"
+                value={localFormData.description}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleLocalInputChange("description", e.target.value);
+                }}
+                className="bg-slate-800/50 border-slate-600 text-white min-h-[100px]"
+                placeholder="Update certificate description..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-certificate-file" className="text-slate-300">
+                Certificate File
+              </Label>
+              <CertificateFileUpload
+                value={localFormData.ipfsHash || ""}
+                onChange={(hash) => handleLocalInputChange("ipfsHash", hash)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditCertificateOpen(false)}
+              className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditCertificate}
+              className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
+            >
+              Update Certificate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Revoke Certificate Modal
+  const RevokeCertificateModal = () => {
+    const [localRevokeReason, setLocalRevokeReason] = useState("");
+
+    // Reset reason when modal opens
+    useEffect(() => {
+      if (revokeCertificateOpen) {
+        setLocalRevokeReason("");
+      }
+    }, [revokeCertificateOpen]);
+
+    const handleRevokeCertificate = () => {
+      // Handle certificate revocation logic here
+      console.log(
+        "Revoking certificate:",
+        selectedCertificate?.id,
+        "Reason:",
+        localRevokeReason
+      );
+      setRevokeCertificateOpen(false);
+      setLocalRevokeReason("");
+    };
+
+    return (
+      <Dialog
+        open={revokeCertificateOpen}
+        onOpenChange={setRevokeCertificateOpen}
+      >
+        <DialogContent
+          className="bg-slate-900/95 backdrop-blur-md border-slate-700 text-white max-w-lg"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-2xl text-red-400">
+              <XCircle className="h-6 w-6" />
+              <span>Revoke Certificate</span>
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              This action cannot be undone. The certificate will be permanently
+              revoked on the blockchain.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="bg-red-900/20 border border-red-400/30 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+                <h4 className="font-semibold text-red-300">Warning</h4>
+              </div>
+              <p className="text-red-200 text-sm">
+                You are about to revoke certificate{" "}
+                <span className="font-mono">{selectedCertificate?.id}</span>.
+                This action is permanent and cannot be reversed.
+              </p>
+            </div>
+
+            {selectedCertificate && (
+              <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-600">
+                <p className="text-slate-400 text-sm">Certificate Details:</p>
+                <p className="text-white font-medium">
+                  {selectedCertificate.course}
+                </p>
+                <p className="text-slate-400 text-sm font-mono">
+                  {selectedCertificate.holder}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="revoke-reason" className="text-slate-300">
+                Reason for Revocation *
+              </Label>
+              <Textarea
+                id="revoke-reason"
+                value={localRevokeReason}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  setLocalRevokeReason(e.target.value);
+                }}
+                placeholder="Please provide a reason for revoking this certificate..."
+                className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 min-h-[80px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRevokeCertificateOpen(false)}
+              className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRevokeCertificate}
+              variant="destructive"
+              disabled={!localRevokeReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Revoke Certificate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  return (
+    <>
+      <IssueCertificateModal />
+      <ViewCertificateModal />
+      <EditCertificateModal />
+      <RevokeCertificateModal />
+    </>
+  );
+}

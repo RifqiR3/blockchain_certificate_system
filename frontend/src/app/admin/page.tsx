@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAccount } from "wagmi";
 import { ConnectKitButton } from "connectkit";
+import { CertificateModals } from "../../components/certificate-modals";
 
 // Mock data
 const dashboardStats = {
@@ -47,6 +48,7 @@ const recentCertificates = [
     course: "Advanced Smart Contract Development",
     issueDate: "2024-01-15",
     status: "active",
+    ipfsHash: "QmExampleHash1234567890abcdef",
   },
   {
     id: "CERT-2024-002",
@@ -54,6 +56,7 @@ const recentCertificates = [
     course: "DeFi Protocol Design",
     issueDate: "2024-01-14",
     status: "active",
+    ipfsHash: "QmExampleHash0987654321fedcba",
   },
   {
     id: "CERT-2024-003",
@@ -61,6 +64,7 @@ const recentCertificates = [
     course: "NFT Development Fundamentals",
     issueDate: "2024-01-13",
     status: "revoked",
+    ipfsHash: "QmExampleHashRevoked111222333",
   },
 ];
 
@@ -68,6 +72,13 @@ export default function AdminDashboard() {
   const { address, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Modal states
+  const [issueCertificateOpen, setIssueCertificateOpen] = useState(false);
+  const [viewCertificateOpen, setViewCertificateOpen] = useState(false);
+  const [editCertificateOpen, setEditCertificateOpen] = useState(false);
+  const [revokeCertificateOpen, setRevokeCertificateOpen] = useState(false);
+  const [selectedCertificate, setSelectedCertificate] = useState<any>(null);
 
   const StatCard = ({
     title,
@@ -113,6 +124,21 @@ export default function AdminDashboard() {
     </Card>
   );
 
+  const handleViewCertificate = (cert: any) => {
+    setSelectedCertificate(cert);
+    setViewCertificateOpen(true);
+  };
+
+  const handleEditCertificate = (cert: any) => {
+    setSelectedCertificate(cert);
+    setEditCertificateOpen(true);
+  };
+
+  const handleRevokeCertificate = (cert: any) => {
+    setSelectedCertificate(cert);
+    setRevokeCertificateOpen(true);
+  };
+
   // Wallet Not Connected State
   if (!isConnected) {
     return (
@@ -127,7 +153,9 @@ export default function AdminDashboard() {
           <div className="flex items-center space-x-3">
             <Shield className="h-8 w-8 text-purple-400" />
             <div>
-              <h1 className="text-2xl font-bold text-white">SealChain Admin</h1>
+              <h1 className="text-2xl font-bold text-white">
+                CertifyChain Admin
+              </h1>
               <p className="text-slate-400 text-sm">
                 Certificate Management System
               </p>
@@ -159,7 +187,7 @@ export default function AdminDashboard() {
                       <Button
                         onClick={show}
                         variant="outline"
-                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 text-white hover:text-black hover:cursor-pointer"
+                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2"
                       >
                         <Wallet className="h-4 w-4" />
                         <span>Connect Wallet</span>
@@ -203,11 +231,11 @@ export default function AdminDashboard() {
 
                   <div className="pt-4">
                     <ConnectKitButton.Custom>
-                      {({ isConnected, show, truncatedAddress, ensName }) => {
+                      {({ show }) => {
                         return (
                           <Button
                             onClick={show}
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:cursor-pointer"
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
                           >
                             <Wallet className="h-5 w-5 mr-2" />
                             Connect Wallet to Continue
@@ -221,7 +249,7 @@ export default function AdminDashboard() {
             </Card>
 
             {/* Additional Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
               <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
                 <Shield className="h-8 w-8 text-purple-400 mx-auto mb-2" />
                 <h3 className="text-white font-semibold mb-1">Secure Access</h3>
@@ -265,7 +293,9 @@ export default function AdminDashboard() {
         <div className="flex items-center space-x-3">
           <Shield className="h-8 w-8 text-purple-400" />
           <div>
-            <h1 className="text-2xl font-bold text-white">SealChain Admin</h1>
+            <h1 className="text-2xl font-bold text-white">
+              CertifyChain Admin
+            </h1>
             <p className="text-slate-400 text-sm">
               Certificate Management System
             </p>
@@ -307,7 +337,7 @@ export default function AdminDashboard() {
             >
               <DropdownMenuItem className="p-0">
                 <ConnectKitButton.Custom>
-                  {({ isConnected, show, truncatedAddress, ensName }) => {
+                  {({ show }) => {
                     return (
                       <Button
                         onClick={show}
@@ -398,6 +428,7 @@ export default function AdminDashboard() {
                   <Button
                     size="sm"
                     className="bg-purple-600 hover:bg-purple-700"
+                    onClick={() => setIssueCertificateOpen(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Issue New
@@ -444,9 +475,20 @@ export default function AdminDashboard() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="bg-slate-800/95 backdrop-blur-sm border-slate-700">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-400">
+                          <DropdownMenuItem
+                            onClick={() => handleViewCertificate(cert)}
+                          >
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleEditCertificate(cert)}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-400"
+                            onClick={() => handleRevokeCertificate(cert)}
+                          >
                             Revoke
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -464,7 +506,10 @@ export default function AdminDashboard() {
               <h2 className="text-2xl font-bold text-white">
                 Certificate Management
               </h2>
-              <Button className="bg-purple-600 hover:bg-purple-700">
+              <Button
+                className="bg-purple-600 hover:bg-purple-700"
+                onClick={() => setIssueCertificateOpen(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Issue Certificate
               </Button>
@@ -527,6 +572,7 @@ export default function AdminDashboard() {
                           variant="outline"
                           size="sm"
                           className="bg-white/5 border-white/20 text-white"
+                          onClick={() => handleViewCertificate(cert)}
                         >
                           View
                         </Button>
@@ -534,10 +580,15 @@ export default function AdminDashboard() {
                           variant="outline"
                           size="sm"
                           className="bg-white/5 border-white/20 text-white"
+                          onClick={() => handleEditCertificate(cert)}
                         >
                           Edit
                         </Button>
-                        <Button variant="destructive" size="sm">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRevokeCertificate(cert)}
+                        >
                           Revoke
                         </Button>
                       </div>
@@ -596,6 +647,17 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+      <CertificateModals
+        issueCertificateOpen={issueCertificateOpen}
+        setIssueCertificateOpen={setIssueCertificateOpen}
+        viewCertificateOpen={viewCertificateOpen}
+        setViewCertificateOpen={setViewCertificateOpen}
+        editCertificateOpen={editCertificateOpen}
+        setEditCertificateOpen={setEditCertificateOpen}
+        revokeCertificateOpen={revokeCertificateOpen}
+        setRevokeCertificateOpen={setRevokeCertificateOpen}
+        selectedCertificate={selectedCertificate}
+      />
     </div>
   );
 }
