@@ -12,6 +12,7 @@ import {
   Copy,
   Eye,
   Share2,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,18 @@ export default function StudentDashboard() {
   const { address, isConnected } = useAccount();
   const [certificates, setCertificates] = useState(mockCertificates);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredCertificates = certificates.filter((certificate) => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    return (
+      certificate.name.toLowerCase().includes(query) ||
+      certificate.description.toLowerCase().includes(query) ||
+      certificate.issuer.toLowerCase().includes(query)
+    );
+  });
 
   // Mock function to load certificates from blockchain
   const loadCertificates = async () => {
@@ -461,26 +474,55 @@ export default function StudentDashboard() {
         {/* Certificates Section */}
         <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-xl">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle className="text-white flex items-center space-x-2">
                 <FileText className="h-6 w-6 text-purple-400" />
                 <span>Your Certificates</span>
-              </CardTitle>
-              <Button
-                onClick={loadCertificates}
-                disabled={isLoading}
-                variant="outline"
-                className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:cursor-pointer hover:text-white"
-              >
-                {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Loading...</span>
-                  </div>
-                ) : (
-                  "Refresh"
+                {searchQuery && (
+                  <span className="text-slate-400 text-sm font-normal">
+                    ({filteredCertificates.length} of {certificates.length})
+                  </span>
                 )}
-              </Button>
+              </CardTitle>
+
+              <div className="flex items-center space-x-3">
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search certificates..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 w-64 bg-white/5 border-white/20 text-white placeholder:text-slate-400 focus:border-purple-400 focus:ring-purple-400/20"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 text-slate-400 hover:text-white"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      ×
+                    </Button>
+                  )}
+                </div>
+
+                <Button
+                  onClick={loadCertificates}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:cursor-pointer hover:text-white"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Loading...</span>
+                    </div>
+                  ) : (
+                    "Refresh"
+                  )}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -499,19 +541,32 @@ export default function StudentDashboard() {
                   </div>
                 ))}
               </div>
-            ) : certificates.length === 0 ? (
+            ) : filteredCertificates.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-16 w-16 text-slate-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-white mb-2">
-                  No Certificates Found
+                  {searchQuery
+                    ? "No Certificates Found"
+                    : "No Certificates Found"}
                 </h3>
                 <p className="text-slate-400">
-                  You don't have any certificates yet.
+                  {searchQuery
+                    ? `No certificates match "${searchQuery}". Try a different search term.`
+                    : "You don't have any certificates yet."}
                 </p>
+                {searchQuery && (
+                  <Button
+                    variant="outline"
+                    className="mt-4 bg-white/5 border-white/20 text-white hover:bg-white/10 hover:cursor-pointer hover:text-white"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Clear Search
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {certificates.map((certificate) => (
+                {filteredCertificates.map((certificate) => (
                   <Card
                     key={certificate.tokenId}
                     className="bg-slate-800/30 border-slate-600 hover:bg-slate-800/50 transition-all duration-200 group overflow-hidden p-0"
@@ -568,7 +623,7 @@ export default function StudentDashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer"
+                            className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer hover:text-white"
                             onClick={() =>
                               window.open(
                                 `https://ipfs.io/ipfs/${certificate.ipfsHash}`,
@@ -582,15 +637,7 @@ export default function StudentDashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer"
-                            onClick={() => copyVerificationLink(certificate)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer"
+                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer hover:text-white"
                             onClick={() => shareVerificationLink(certificate)}
                           >
                             <Share2 className="h-4 w-4" />
@@ -634,7 +681,7 @@ export default function StudentDashboard() {
         position="top-right"
         toastOptions={{
           className:
-            "!bg-green-600/20 !text-green-300 !border !border-green-400/30",
+            "!bg-green-600/40 !text-green-300 !border !border-green-400/30",
           style: {
             backgroundColor: "transparent",
             color: "inherit",
