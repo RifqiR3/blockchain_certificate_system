@@ -22,21 +22,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConnectKitButton } from "connectkit";
+import { ethers } from "ethers";
+import CertificateNFT from "@/contracts/CertificateNFT.json";
 
 export default function CertificateVerification() {
   const [certificateInput, setCertificateInput] = useState("");
   const [verificationStatus, setVerificationStatus] = useState<
-    "idle" | "loading" | "valid" | "invalid" | "revoked"
+    "idle" | "loading" | "valid" | "invalid" | "revoked" | "partial"
   >("idle");
 
   type CertificateData = {
-    id: string;
+    tokenId: string;
     holder: string;
+    name: string;
+    description: string;
     issuer: string;
-    course: string;
     issueDate: string;
     expiryDate: string;
-    status: string;
+    ipfsHash: string;
+    status: "valid" | "expired" | "revoked" | "unknown";
+    imageUrl: string;
   };
 
   const [certificateData, setCertificateData] =
@@ -44,30 +49,72 @@ export default function CertificateVerification() {
 
   const handleVerification = async () => {
     if (!certificateInput.trim()) return;
-
     setVerificationStatus("loading");
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock verification logic
-      const isValid = Math.random() > 0.3;
+    try {
+      const input = certificateInput.trim();
 
-      if (isValid) {
-        setVerificationStatus("valid");
+      // If input is a URI
+      if (input.startsWith("ipfs://")) {
+        const metadataUrl = input.replace("ipfs://", "https://ipfs.io/ipfs/");
+        const res = await fetch(metadataUrl);
+        if (!res.ok) throw new Error("Metadata not found");
+
+        const metadata = await res.json();
         setCertificateData({
-          id: certificateInput,
-          holder: "0x742d35Cc6634C0532925a3b8D404d3aABe09e3b1",
-          issuer: "Blockchain University",
-          course: "Advanced Smart Contract Development",
-          issueDate: "2024-01-15",
-          expiryDate: "2026-01-15",
-          status: "Active",
+          tokenId: "-",
+          holder: "Unknown",
+          name: metadata.name || "Unknown",
+          description: metadata.description || "No description",
+          issuer: metadata.issuer || "Unknown",
+          issueDate: metadata.issueDate || "-",
+          expiryDate: metadata.expiryDate || "-",
+          ipfsHash: metadata.ipfsHash || "",
+          status: "unknown",
+          imageUrl: metadata.image || "/placeholder.svg",
         });
-      } else {
-        setVerificationStatus("invalid");
-        setCertificateData(null);
+
+        setVerificationStatus("valid");
+        return;
       }
-    }, 2000);
+
+      // If input is a token ID
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+        CertificateNFT.abi,
+        provider
+      );
+
+      const tokenId = certificateInput;
+      const owner = await contract.ownerOf(tokenId);
+      const tokenURI = await contract.tokenURI(tokenId);
+      const isExpired = await contract.isExpiredOfficial(tokenId);
+      const isRevoked = await contract.isRevoked(tokenId);
+
+      const metadataUrl = tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/");
+      const res = await fetch(metadataUrl);
+      if (!res.ok) throw new Error("Metadata fetch failed!");
+
+      const metadata = await res.json();
+
+      setCertificateData({
+        tokenId,
+        holder: owner,
+        name: metadata.name || "Unknown",
+        description: metadata.description || "No description",
+        issuer: metadata.issuer || "Unknown",
+        issueDate: metadata.issueDate || "-",
+        expiryDate: metadata.expiryDate || "-",
+        ipfsHash: metadata.ipfsHash || "Unknown",
+        status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
+        imageUrl: metadata.image || "/placeholder.svg",
+      });
+    } catch (error) {
+      console.error("Verification error:", error);
+      setVerificationStatus("invalid");
+      setCertificateData(null);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -218,7 +265,7 @@ export default function CertificateVerification() {
                             Certificate ID
                           </p>
                           <p className="font-mono text-sm break-all">
-                            {certificateData.id}
+                            {certificateData.tokenId}
                           </p>
                         </div>
                         <div>
@@ -233,7 +280,7 @@ export default function CertificateVerification() {
                         </div>
                         <div>
                           <p className="text-sm text-slate-400">Course</p>
-                          <p>{certificateData.course}</p>
+                          <p>{certificateData.name}</p>
                         </div>
                         <div>
                           <p className="text-sm text-slate-400">Issue Date</p>
