@@ -26,7 +26,7 @@ import { ConnectKitButton } from "connectkit";
 export default function CertificateVerification() {
   const [certificateInput, setCertificateInput] = useState("");
   const [verificationStatus, setVerificationStatus] = useState<
-    "idle" | "loading" | "valid" | "invalid"
+    "idle" | "loading" | "valid" | "invalid" | "revoked"
   >("idle");
 
   type CertificateData = {

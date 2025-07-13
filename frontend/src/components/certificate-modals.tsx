@@ -16,6 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { FileText, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { CertificateFileUpload } from "./certificate-file-upload";
+import { ethers } from "ethers";
+import CertificateNFT from "@/contracts/CertificateNFT.json";
+
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 
 interface Certificate {
   id: string;
@@ -81,9 +85,47 @@ export function CertificateModals({
       setLocalFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleSubmit = () => {
-      console.log("Issuing certificate:", localFormData);
-      setIssueCertificateOpen(false);
+    const handleSubmit = async () => {
+      try {
+        if (!window.ethereum) {
+          alert("MetaMask not found!");
+          return;
+        }
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        if (!CONTRACT_ADDRESS) {
+          alert("Smart contract address is not configured.");
+          return;
+        }
+        // Create contract instance
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CertificateNFT.abi,
+          signer
+        );
+
+        const expirationTimestamp = localFormData.expiryDate
+          ? Math.floor(new Date(localFormData.expiryDate).getTime() / 1000)
+          : 0;
+
+        const metadataURI = `ipfs://${localFormData.ipfsHash}`;
+
+        const tx = await contract.mintCertificate(
+          localFormData.holder,
+          metadataURI,
+          expirationTimestamp
+        );
+
+        await tx.wait();
+
+        alert("✅ Certificate minted successfully!");
+        setIssueCertificateOpen(false);
+      } catch (err) {
+        console.error("❌ Minting failed:", err);
+        alert("❌ Failed to mint certificate.");
+      }
     };
 
     return (
