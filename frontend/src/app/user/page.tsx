@@ -132,39 +132,48 @@ export default function StudentDashboard() {
         signer
       );
 
-      const balance = await contract.getActiveCertificateCount();
+      const total = await contract.getActiveCertificateCount();
       const certs: Certificate[] = [];
 
-      for (let i = 0; i < balance; i++) {
-        const tokenId = await contract.tokenOfOwnerByIndex(address, i);
-        const uri = await contract.tokenURI(tokenId);
-        const ipfsHash = uri.replace("ipfs://", "");
-        const metadataUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+      for (let i = 0; i < total; i++) {
+        const tokenId = await contract.getActiveCertificateId(i);
 
-        const res = await fetch(metadataUrl);
-        if (!res.ok) {
-          console.warn(`Failed to fetch metadata for tokenId: ${tokenId}`);
+        try {
+          const owner = await contract.ownerOf(tokenId);
+          if (owner.toLowerCase() !== address.toLowerCase()) continue; // Only fetch certificates owned by the connected address
+
+          const uri = await contract.tokenURI(tokenId);
+          const ipfsHash = uri.replace("ipfs://", "");
+          const metadataUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+
+          const res = await fetch(metadataUrl);
+          if (!res.ok) {
+            console.warn(`Failed to fetch metadata for tokenId: ${tokenId}`);
+            continue;
+          }
+
+          const metadata = await res.json();
+          const isExpired = await contract.isExpiredOfficial(tokenId);
+          const isRevoked = await contract.isRevoked(tokenId);
+
+          certs.push({
+            tokenId: tokenId.toString(),
+            name: metadata.name || "Untitled Certificate",
+            description: metadata.description || "",
+            issuer: metadata.issuer || "Unknown Issuer",
+            issueDate: metadata.issueDate || "",
+            expiryDate: metadata.expiryDate || "",
+            ipfsHash,
+            status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
+            imageUrl: (metadata.image || "").replace(
+              "ipfs://",
+              "https://ipfs.io/ipfs/"
+            ),
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch tokenId: ${tokenId}`, error);
           continue;
         }
-
-        const metadata = await res.json();
-        const isExpired = await contract.isExpiredOfficial(tokenId);
-        const isRevoked = await contract.isRevoked(tokenId);
-
-        certs.push({
-          tokenId: tokenId.toString(),
-          name: metadata.name || "Untitled Certificate",
-          description: metadata.description || "",
-          issuer: metadata.issuer || "Unknown Issuer",
-          issueDate: metadata.issueDate || "",
-          expiryDate: metadata.expiryDate || "",
-          ipfsHash,
-          status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
-          imageUrl: (metadata.image || "").replace(
-            "ipfs://",
-            "https://ipfs.io/ipfs/"
-          ),
-        });
       }
 
       setCertificates(certs);

@@ -27,9 +27,13 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
 
     constructor() ERC721("CertificateNFT", "CERT") Ownable() {}
 
-    function getActiveCertificateCount(uint256 index) public view returns (uint256) {
-        require(index < _activeCertificates.length, "CertificateNFT: Invalid index");
-        return _activeCertificates[index]; // Return the count of active certificates
+    function getActiveCertificateCount() public view returns (uint256) {
+        return _activeCertificates.length; // Return the count of active certificates
+    }
+
+    function getActiveCertificateId(uint256 index) public view returns (uint256) {
+        require(index < _activeCertificates.length, "CertificateNFT: Index out of bounds");
+        return _activeCertificates[index]; // Return the token ID at the specified index
     }
 
     function mintCertificate(address recipient, string memory metadataURI, uint256 expirationTimestamps) public onlyOwner returns (uint256) {
