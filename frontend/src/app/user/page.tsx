@@ -25,66 +25,69 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 import { useAccount } from "wagmi";
 import { ConnectKitButton } from "connectkit";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
+import { ethers } from "ethers";
+import CertificateNFT from "@/contracts/CertificateNFT.json";
 
 // Mock certificate data - in real app, this would come from blockchain
-const mockCertificates = [
-  {
-    tokenId: "1",
-    name: "Advanced Smart Contract Development",
-    description:
-      "Comprehensive course covering advanced Solidity patterns and security best practices",
-    image:
-      "https://marketplace.canva.com/EAFlVDzb7sA/3/0/1600w/canva-white-gold-elegant-modern-certificate-of-participation-Qn4Rei141MM.jpg",
-    issuer: "Blockchain University",
-    issueDate: "2024-01-15",
-    expiryDate: "2026-01-15",
-    status: "valid",
-    ipfsHash: "QmExampleHash1234567890abcdef",
-  },
-  {
-    tokenId: "2",
-    name: "DeFi Protocol Design",
-    description: "Learn to build and deploy decentralized finance protocols",
-    image:
-      "https://cdn.create.microsoft.com/catalog-assets/en-us/5824ad94-f1f1-4ef0-8f4a-312e98b556a3/thumbnails/1034/olive-branch-certificate-of-accomplishment-gray-organic-simple-1-1-a60a7e665ae6.webp",
-    issuer: "DeFi Academy",
-    issueDate: "2024-02-20",
-    expiryDate: "2025-02-20",
-    status: "expired",
-    ipfsHash: "QmExampleHash0987654321fedcba",
-  },
-  {
-    tokenId: "3",
-    name: "NFT Development Fundamentals",
-    description: "Complete guide to creating and deploying NFT collections",
-    image: "/placeholder.svg?height=300&width=400",
-    issuer: "Web3 Institute",
-    issueDate: "2023-12-10",
-    expiryDate: "2024-12-10",
-    status: "revoked",
-    ipfsHash: "QmExampleHashRevoked111222333",
-  },
-  {
-    tokenId: "4",
-    name: "Blockchain Security Audit",
-    description:
-      "Professional certification in smart contract security auditing",
-    image: "/placeholder.svg?height=300&width=400",
-    issuer: "Security Labs",
-    issueDate: "2024-03-01",
-    expiryDate: "2027-03-01",
-    status: "valid",
-    ipfsHash: "QmExampleHashSecurity999888777",
-  },
-];
+// const mockCertificates = [
+//   {
+//     tokenId: "1",
+//     name: "Advanced Smart Contract Development",
+//     description:
+//       "Comprehensive course covering advanced Solidity patterns and security best practices",
+//     image:
+//       "https://marketplace.canva.com/EAFlVDzb7sA/3/0/1600w/canva-white-gold-elegant-modern-certificate-of-participation-Qn4Rei141MM.jpg",
+//     issuer: "Blockchain University",
+//     issueDate: "2024-01-15",
+//     expiryDate: "2026-01-15",
+//     status: "valid",
+//     ipfsHash: "QmExampleHash1234567890abcdef",
+//   },
+//   {
+//     tokenId: "2",
+//     name: "DeFi Protocol Design",
+//     description: "Learn to build and deploy decentralized finance protocols",
+//     image:
+//       "https://cdn.create.microsoft.com/catalog-assets/en-us/5824ad94-f1f1-4ef0-8f4a-312e98b556a3/thumbnails/1034/olive-branch-certificate-of-accomplishment-gray-organic-simple-1-1-a60a7e665ae6.webp",
+//     issuer: "DeFi Academy",
+//     issueDate: "2024-02-20",
+//     expiryDate: "2025-02-20",
+//     status: "expired",
+//     ipfsHash: "QmExampleHash0987654321fedcba",
+//   },
+//   {
+//     tokenId: "3",
+//     name: "NFT Development Fundamentals",
+//     description: "Complete guide to creating and deploying NFT collections",
+//     image: "/placeholder.svg?height=300&width=400",
+//     issuer: "Web3 Institute",
+//     issueDate: "2023-12-10",
+//     expiryDate: "2024-12-10",
+//     status: "revoked",
+//     ipfsHash: "QmExampleHashRevoked111222333",
+//   },
+//   {
+//     tokenId: "4",
+//     name: "Blockchain Security Audit",
+//     description:
+//       "Professional certification in smart contract security auditing",
+//     image: "/placeholder.svg?height=300&width=400",
+//     issuer: "Security Labs",
+//     issueDate: "2024-03-01",
+//     expiryDate: "2027-03-01",
+//     status: "valid",
+//     ipfsHash: "QmExampleHashSecurity999888777",
+//   },
+// ];
 
 export default function StudentDashboard() {
   const { address, isConnected } = useAccount();
-  const [certificates, setCertificates] = useState(mockCertificates);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -99,16 +102,77 @@ export default function StudentDashboard() {
     );
   });
 
-  // Mock function to load certificates from blockchain
-  const loadCertificates = async () => {
-    if (!address) return;
+  interface Certificate {
+    tokenId: string;
+    name: string;
+    description: string;
+    issuer: string;
+    issueDate: string;
+    expiryDate?: string;
+    ipfsHash: string;
+    status: "valid" | "expired" | "revoked";
+    imageUrl: string;
+  }
 
-    setIsLoading(true);
-    // Simulate API call to load certificates
-    setTimeout(() => {
-      setCertificates(mockCertificates);
+  // function to load certificates from blockchain
+  const loadCertificates = async () => {
+    try {
+      setIsLoading(true);
+      if (!isConnected || !address || !window.ethereum) {
+        setCertificates([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+        CertificateNFT.abi,
+        signer
+      );
+
+      const balance = await contract.getActiveCertificateCount();
+      const certs: Certificate[] = [];
+
+      for (let i = 0; i < balance; i++) {
+        const tokenId = await contract.tokenOfOwnerByIndex(address, i);
+        const uri = await contract.tokenURI(tokenId);
+        const ipfsHash = uri.replace("ipfs://", "");
+        const metadataUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+
+        const res = await fetch(metadataUrl);
+        if (!res.ok) {
+          console.warn(`Failed to fetch metadata for tokenId: ${tokenId}`);
+          continue;
+        }
+
+        const metadata = await res.json();
+        const isExpired = await contract.isExpiredOfficial(tokenId);
+        const isRevoked = await contract.isRevoked(tokenId);
+
+        certs.push({
+          tokenId: tokenId.toString(),
+          name: metadata.name || "Untitled Certificate",
+          description: metadata.description || "",
+          issuer: metadata.issuer || "Unknown Issuer",
+          issueDate: metadata.issueDate || "",
+          expiryDate: metadata.expiryDate || "",
+          ipfsHash,
+          status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
+          imageUrl: (metadata.image || "").replace(
+            "ipfs://",
+            "https://ipfs.io/ipfs/"
+          ),
+        });
+      }
+
+      setCertificates(certs);
+    } catch (error) {
+      console.error("Failed to load certificates:", error);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   useEffect(() => {
@@ -150,18 +214,18 @@ export default function StudentDashboard() {
     }
   };
 
-  const generateVerificationLink = (certificate: any) => {
+  const generateVerificationLink = (certificate: Certificate) => {
     const baseUrl = window.location.origin;
     return `${baseUrl}/?verify=${certificate.tokenId}`;
   };
 
-  const copyVerificationLink = (certificate: any) => {
+  const copyVerificationLink = (certificate: Certificate) => {
     const link = generateVerificationLink(certificate);
     navigator.clipboard.writeText(link);
     toast.success("Verification link copied to clipboard!");
   };
 
-  const shareVerificationLink = (certificate: any) => {
+  const shareVerificationLink = (certificate: Certificate) => {
     const link = generateVerificationLink(certificate);
     if (navigator.share) {
       navigator.share({
@@ -268,7 +332,7 @@ export default function StudentDashboard() {
                         return (
                           <Button
                             onClick={show}
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:cursor-pointer"
                           >
                             <Wallet className="h-5 w-5 mr-2" />
                             Connect Wallet to View Certificates
@@ -574,9 +638,11 @@ export default function StudentDashboard() {
                     <CardContent className="!p-0 !m-0">
                       {/* Certificate Image */}
                       <div className="relative">
-                        <img
-                          src={certificate.image || "/placeholder.svg"}
+                        <Image
+                          src={certificate.imageUrl || "/placeholder.svg"}
                           alt={certificate.name}
+                          width={400}
+                          height={192}
                           className="w-full h-48 object-cover rounded-t-lg block"
                         />
                         <div className="absolute top-3 right-3">
