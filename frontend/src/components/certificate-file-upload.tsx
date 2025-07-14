@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface CertificateFileUploadProps {
-  value?: string; // IPFS hash or URL
-  onChange?: (ipfsHash: string) => void;
+  value?: File | null; // IPFS hash or URL
+  onChange?: (file: File | null) => void; // Callback when file is selected or removed
   disabled?: boolean;
   showPreview?: boolean;
 }
@@ -69,7 +69,7 @@ export function CertificateFileUpload({
         const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
 
         setPreviewUrl(ipfsUrl);
-        onChange?.(ipfsHash);
+        onChange?.(file);
       } catch (error) {
         console.error("Upload failed:", error);
         alert("Upload failed. Please try again.");
@@ -282,7 +282,9 @@ export function CertificateFileUpload({
                   </p>
                 </div>
                 <p className="text-green-200 text-xs mt-1 font-mono break-all">
-                  {value || "Hash will be generated after upload"}
+                  {value instanceof File
+                    ? value.name
+                    : "Hash will be generated after upload"}
                 </p>
               </div>
             </div>

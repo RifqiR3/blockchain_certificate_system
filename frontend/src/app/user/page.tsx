@@ -111,7 +111,7 @@ export default function StudentDashboard() {
     expiryDate?: string;
     ipfsHash: string;
     status: "valid" | "expired" | "revoked";
-    imageUrl: string;
+    fileUrl: string;
   }
 
   // function to load certificates from blockchain
@@ -165,7 +165,7 @@ export default function StudentDashboard() {
             expiryDate: metadata.expiryDate || "",
             ipfsHash,
             status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
-            imageUrl: (metadata.image || "").replace(
+            fileUrl: (metadata.file || "").replace(
               "ipfs://",
               "https://ipfs.io/ipfs/"
             ),
@@ -329,7 +329,7 @@ export default function StudentDashboard() {
                     <div className="flex items-center space-x-3">
                       <FileText className="h-5 w-5 text-blue-400 flex-shrink-0" />
                       <p className="text-blue-300 text-sm">
-                        Your certificates are stored as NFTs on the blockchain
+                        Your certificates are stored as SBTs on the blockchain
                         and linked to your wallet address
                       </p>
                     </div>
@@ -648,7 +648,7 @@ export default function StudentDashboard() {
                       {/* Certificate Image */}
                       <div className="relative">
                         <Image
-                          src={certificate.imageUrl || "/placeholder.svg"}
+                          src={certificate.fileUrl || "/placeholder.svg"}
                           alt={certificate.name}
                           width={400}
                           height={192}

@@ -89,7 +89,7 @@ export default function AdminDashboard() {
   }: {
     title: string;
     value: string | number;
-    icon: any;
+    icon: React.ElementType;
     trend?: "up" | "down";
     trendValue?: string;
   }) => (
@@ -187,7 +187,7 @@ export default function AdminDashboard() {
                       <Button
                         onClick={show}
                         variant="outline"
-                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2"
+                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 hover:cursor-pointer text-white"
                       >
                         <Wallet className="h-4 w-4" />
                         <span>Connect Wallet</span>
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
                         return (
                           <Button
                             onClick={show}
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:cursor-pointer"
                           >
                             <Wallet className="h-5 w-5 mr-2" />
                             Connect Wallet to Continue

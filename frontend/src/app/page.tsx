@@ -87,29 +87,49 @@ export default function CertificateVerification() {
       );
 
       const tokenId = certificateInput;
-      const owner = await contract.ownerOf(tokenId);
-      const tokenURI = await contract.tokenURI(tokenId);
-      const isExpired = await contract.isExpiredOfficial(tokenId);
-      const isRevoked = await contract.isRevoked(tokenId);
 
-      const metadataUrl = tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/");
-      const res = await fetch(metadataUrl);
-      if (!res.ok) throw new Error("Metadata fetch failed!");
+      let owner, tokenURI, isExpired, isRevoked;
 
-      const metadata = await res.json();
+      try {
+        owner = await contract.ownerOf(tokenId);
+        tokenURI = await contract.tokenURI(tokenId);
+        isExpired = await contract.isExpiredOfficial(tokenId);
+        isRevoked = await contract.isRevoked(tokenId);
+      } catch (err) {
+        console.error("⚠️ Token does not exist or is invalid:", err);
+        setVerificationStatus("invalid");
+        setCertificateData(null);
+        return;
+      }
 
-      setCertificateData({
-        tokenId,
-        holder: owner,
-        name: metadata.name || "Unknown",
-        description: metadata.description || "No description",
-        issuer: metadata.issuer || "Unknown",
-        issueDate: metadata.issueDate || "-",
-        expiryDate: metadata.expiryDate || "-",
-        ipfsHash: metadata.ipfsHash || "Unknown",
-        status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
-        imageUrl: metadata.image || "/placeholder.svg",
-      });
+      try {
+        const res = await fetch(
+          tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/")
+        );
+        if (!res.ok) throw new Error("Metadata fetch failed");
+
+        const metadata = await res.json();
+
+        setCertificateData({
+          tokenId,
+          holder: owner,
+          name: metadata.name || "Unknown",
+          description: metadata.description || "No description",
+          issuer: metadata.issuer || "Unknown",
+          issueDate: metadata.issueDate || "-",
+          expiryDate: metadata.expiryDate || "-",
+          ipfsHash: metadata.ipfsHash || "Unknown",
+          status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
+          imageUrl: metadata.image || "/placeholder.svg",
+        });
+
+        setVerificationStatus("valid");
+      } catch (err) {
+        console.error("❌ Failed to fetch metadata:", err);
+        setVerificationStatus("invalid");
+        setCertificateData(null);
+        return;
+      }
     } catch (error) {
       console.error("Verification error:", error);
       setVerificationStatus("invalid");
@@ -256,6 +276,22 @@ export default function CertificateVerification() {
                         : "Certificate Invalid"}
                     </h3>
                   </div>
+
+                  {/* Warning Badge for URI-only verification */}
+                  {certificateData?.tokenId === "-" && (
+                    <div className="mb-6 p-3 bg-yellow-900/20 border border-yellow-400/30 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="h-4 w-4 text-yellow-400" />
+                        <span className="text-yellow-300 text-sm font-medium">
+                          ⚠️ URI-only verification — not matched on-chain
+                        </span>
+                      </div>
+                      <p className="text-yellow-200/80 text-xs mt-1 ml-6">
+                        This certificate was verified using metadata only. For
+                        full blockchain verification, use the token ID.
+                      </p>
+                    </div>
+                  )}
 
                   {verificationStatus === "valid" && certificateData && (
                     <div className="space-y-4 text-slate-300">

@@ -64,7 +64,6 @@ export function CertificateModals({
       issueDate: "",
       expiryDate: "",
       description: "",
-      ipfsHash: "",
     });
 
     // Reset form when modal opens
@@ -76,7 +75,6 @@ export function CertificateModals({
           issueDate: "",
           expiryDate: "",
           description: "",
-          ipfsHash: "",
         });
       }
     }, [issueCertificateOpen]);
@@ -85,20 +83,34 @@ export function CertificateModals({
       setLocalFormData((prev) => ({ ...prev, [field]: value }));
     };
 
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
     const handleSubmit = async () => {
       try {
+        // Check if MetaMask is installed
         if (!window.ethereum) {
           alert("MetaMask not found!");
           return;
         }
 
+        // Request account access if needed
+        console.log("Requesting account access...");
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+
+        console.log("Creating provider...");
         const provider = new ethers.BrowserProvider(window.ethereum);
+
+        console.log("Getting signer...");
         const signer = await provider.getSigner();
+
+        console.log("Signer address:", await signer.getAddress());
 
         if (!CONTRACT_ADDRESS) {
           alert("Smart contract address is not configured.");
           return;
         }
+
+        console.log("Creating contract instance...");
         // Create contract instance
         const contract = new ethers.Contract(
           CONTRACT_ADDRESS,
@@ -106,15 +118,39 @@ export function CertificateModals({
           signer
         );
 
+        if (!selectedFile) {
+          alert("Please upload a certificate file.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("name", localFormData.course);
+        formData.append("issuer", "Your University"); // or add input if you want
+        formData.append("description", localFormData.description);
+        formData.append("issueDate", localFormData.issueDate);
+        formData.append("expiryDate", localFormData.expiryDate || "");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          alert("Failed to upload certificate file.");
+          return;
+        }
+
+        const { metadataUri } = await uploadRes.json();
+        console.log("✅ IPFS URI received:", metadataUri);
+
         const expirationTimestamp = localFormData.expiryDate
           ? Math.floor(new Date(localFormData.expiryDate).getTime() / 1000)
           : 0;
 
-        const metadataURI = `ipfs://${localFormData.ipfsHash}`;
-
         const tx = await contract.mintCertificate(
           localFormData.holder,
-          metadataURI,
+          metadataUri,
           expirationTimestamp
         );
 
@@ -124,7 +160,23 @@ export function CertificateModals({
         setIssueCertificateOpen(false);
       } catch (err) {
         console.error("❌ Minting failed:", err);
-        alert("❌ Failed to mint certificate.");
+
+        // More specific error handling
+        if (typeof err === "object" && err !== null && "code" in err) {
+          const code = (err as { code: number }).code;
+          if (code === 4001) {
+            alert("❌ Transaction rejected by user");
+          } else if (code === -32002) {
+            alert("❌ MetaMask request already pending");
+          } else {
+            alert(
+              "❌ Failed to mint certificate: " +
+                (err as { message?: string }).message
+            );
+          }
+        } else {
+          alert("❌ Failed to mint certificate: " + String(err));
+        }
       }
     };
 
@@ -233,8 +285,8 @@ export function CertificateModals({
                 Certificate File *
               </Label>
               <CertificateFileUpload
-                value={localFormData.ipfsHash}
-                onChange={(hash) => handleLocalInputChange("ipfsHash", hash)}
+                value={selectedFile}
+                onChange={(file) => setSelectedFile(file)}
               />
             </div>
           </div>
@@ -249,12 +301,12 @@ export function CertificateModals({
             </Button>
             <Button
               onClick={handleSubmit}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover:cursor-pointer"
               disabled={
                 !localFormData.holder ||
                 !localFormData.course ||
                 !localFormData.issueDate ||
-                !localFormData.ipfsHash
+                !selectedFile
               }
             >
               Issue Certificate
@@ -340,10 +392,7 @@ export function CertificateModals({
             <div className="space-y-2">
               <Label className="text-slate-300">Certificate File</Label>
               <CertificateFileUpload
-                value={
-                  selectedCertificate?.ipfsHash ||
-                  "QmExampleHashForDemo123456789"
-                }
+                value={undefined}
                 showPreview={true}
                 disabled={true}
               />
@@ -382,8 +431,8 @@ export function CertificateModals({
     const [localFormData, setLocalFormData] = useState({
       course: "",
       description: "",
-      ipfsHash: "",
     });
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     // Initialize form with selected certificate data when modal opens
     useEffect(() => {
@@ -391,8 +440,8 @@ export function CertificateModals({
         setLocalFormData({
           course: selectedCertificate.course || "",
           description: selectedCertificate.description || "",
-          ipfsHash: selectedCertificate.ipfsHash || "",
         });
+        setSelectedFile(null);
       }
     }, [editCertificateOpen, selectedCertificate]);
 
@@ -483,8 +532,8 @@ export function CertificateModals({
                 Certificate File
               </Label>
               <CertificateFileUpload
-                value={localFormData.ipfsHash || ""}
-                onChange={(hash) => handleLocalInputChange("ipfsHash", hash)}
+                value={selectedFile}
+                onChange={(file) => setSelectedFile(file)}
               />
             </div>
           </div>
