@@ -40,7 +40,7 @@ export default function CertificateVerification() {
     issueDate: string;
     expiryDate: string;
     ipfsHash: string;
-    status: "valid" | "expired" | "revoked" | "unknown";
+    status: "valid" | "expired" | "revoked" | "unverified" | "unknown";
     imageUrl: string;
   };
 
@@ -48,67 +48,64 @@ export default function CertificateVerification() {
     useState<CertificateData | null>(null);
 
   const handleVerification = async () => {
-    if (!certificateInput.trim()) return;
     setVerificationStatus("loading");
+    setCertificateData(null);
 
-    try {
-      const input = certificateInput.trim();
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+      CertificateNFT.abi,
+      signer
+    );
 
-      // If input is a URI
-      if (input.startsWith("ipfs://")) {
-        const metadataUrl = input.replace("ipfs://", "https://ipfs.io/ipfs/");
-        const res = await fetch(metadataUrl);
-        if (!res.ok) throw new Error("Metadata not found");
+    const input = certificateInput.trim();
 
-        const metadata = await res.json();
-        setCertificateData({
-          tokenId: "-",
-          holder: "Unknown",
-          name: metadata.name || "Unknown",
-          description: metadata.description || "No description",
-          issuer: metadata.issuer || "Unknown",
-          issueDate: metadata.issueDate || "-",
-          expiryDate: metadata.expiryDate || "-",
-          ipfsHash: metadata.ipfsHash || "",
-          status: "unknown",
-          imageUrl: metadata.image || "/placeholder.svg",
-        });
+    // Check if input is a number (tokenId)
+    const isTokenId = /^\d+$/.test(input);
 
-        setVerificationStatus("valid");
+    if (isTokenId) {
+      const tokenId = input;
+
+      let owner: string;
+      let tokenURI: string;
+      let isExpired: boolean;
+      let isRevoked: boolean;
+
+      try {
+        // ✅ Step 1: Check if token exists
+        owner = await contract.ownerOf(tokenId);
+      } catch (err) {
+        console.error("❌ Invalid token ID (does not exist):", err);
+        setVerificationStatus("invalid");
         return;
       }
 
-      // If input is a token ID
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(
-        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
-        CertificateNFT.abi,
-        provider
-      );
-
-      const tokenId = certificateInput;
-
-      let owner, tokenURI, isExpired, isRevoked;
-
       try {
-        owner = await contract.ownerOf(tokenId);
+        // ✅ Step 2: Fetch related metadata
         tokenURI = await contract.tokenURI(tokenId);
         isExpired = await contract.isExpiredOfficial(tokenId);
         isRevoked = await contract.isRevoked(tokenId);
       } catch (err) {
-        console.error("⚠️ Token does not exist or is invalid:", err);
+        console.error("❌ Failed to fetch token data:", err);
         setVerificationStatus("invalid");
-        setCertificateData(null);
+        return;
+      }
+
+      // ✅ Step 3: Validate URI
+      if (!tokenURI.startsWith("ipfs://")) {
+        console.warn("⚠️ tokenURI is not IPFS:", tokenURI);
+        setVerificationStatus("invalid");
         return;
       }
 
       try {
-        const res = await fetch(
+        const metadataRes = await fetch(
           tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/")
         );
-        if (!res.ok) throw new Error("Metadata fetch failed");
+        if (!metadataRes.ok) throw new Error("Failed to fetch IPFS metadata");
 
-        const metadata = await res.json();
+        const metadata = await metadataRes.json();
 
         setCertificateData({
           tokenId,
@@ -118,22 +115,56 @@ export default function CertificateVerification() {
           issuer: metadata.issuer || "Unknown",
           issueDate: metadata.issueDate || "-",
           expiryDate: metadata.expiryDate || "-",
-          ipfsHash: metadata.ipfsHash || "Unknown",
+          ipfsHash: tokenURI.replace("ipfs://", ""),
           status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
-          imageUrl: metadata.image || "/placeholder.svg",
+          imageUrl: metadata.image
+            ? metadata.image.replace("ipfs://", "https://ipfs.io/ipfs/")
+            : "/placeholder.svg",
         });
 
         setVerificationStatus("valid");
       } catch (err) {
-        console.error("❌ Failed to fetch metadata:", err);
+        console.error("❌ Failed to load metadata from IPFS:", err);
         setVerificationStatus("invalid");
-        setCertificateData(null);
+      }
+    } else {
+      // ✅ Manual URI input flow
+      const uri = input;
+
+      if (!uri.startsWith("ipfs://")) {
+        console.warn("❌ URI is not IPFS format:", uri);
+        setVerificationStatus("invalid");
         return;
       }
-    } catch (error) {
-      console.error("Verification error:", error);
-      setVerificationStatus("invalid");
-      setCertificateData(null);
+
+      try {
+        const metadataRes = await fetch(
+          uri.replace("ipfs://", "https://ipfs.io/ipfs/")
+        );
+        if (!metadataRes.ok) throw new Error("IPFS fetch failed");
+
+        const metadata = await metadataRes.json();
+
+        setCertificateData({
+          tokenId: "-",
+          holder: "-",
+          name: metadata.name || "Unknown",
+          description: metadata.description || "No description",
+          issuer: metadata.issuer || "Unknown",
+          issueDate: metadata.issueDate || "-",
+          expiryDate: metadata.expiryDate || "-",
+          ipfsHash: uri.replace("ipfs://", ""),
+          status: "unknown",
+          imageUrl: metadata.image
+            ? metadata.image.replace("ipfs://", "https://ipfs.io/ipfs/")
+            : "/placeholder.svg",
+        });
+
+        setVerificationStatus("valid");
+      } catch (err) {
+        console.error("❌ IPFS metadata fetch failed:", err);
+        setVerificationStatus("invalid");
+      }
     }
   };
 
