@@ -43,6 +43,7 @@ interface CertificateModalsProps {
   revokeCertificateOpen: boolean;
   setRevokeCertificateOpen: (open: boolean) => void;
   selectedCertificate: Certificate | null;
+  issuerName?: string | null;
 }
 
 export function CertificateModals({
@@ -55,12 +56,14 @@ export function CertificateModals({
   revokeCertificateOpen,
   setRevokeCertificateOpen,
   selectedCertificate,
+  issuerName,
 }: CertificateModalsProps) {
   // Issue Certificate Modal
   const IssueCertificateModal = () => {
     const [localFormData, setLocalFormData] = useState({
       holder: "",
       course: "",
+      issuer: issuerName,
       issueDate: "",
       expiryDate: "",
       description: "",
@@ -72,12 +75,13 @@ export function CertificateModals({
         setLocalFormData({
           holder: "",
           course: "",
+          issuer: issuerName,
           issueDate: "",
           expiryDate: "",
           description: "",
         });
       }
-    }, [issueCertificateOpen]);
+    }, [issueCertificateOpen, issuerName]);
 
     const handleLocalInputChange = (field: string, value: string) => {
       setLocalFormData((prev) => ({ ...prev, [field]: value }));
@@ -229,6 +233,18 @@ export function CertificateModals({
                   className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="issuer" className="text-slate-300">
+                  Issuer Organization
+                </Label>
+                <Input
+                  id="issuer"
+                  value={localFormData.issuer ?? ""}
+                  disabled
+                  className="bg-slate-800/30 border-slate-600 text-slate-400 cursor-not-allowed"
+                />
+                <p className="text-xs text-slate-500"></p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -305,6 +321,7 @@ export function CertificateModals({
               disabled={
                 !localFormData.holder ||
                 !localFormData.course ||
+                !localFormData.issuer ||
                 !localFormData.issueDate ||
                 !selectedFile
               }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Shield,
   User,
@@ -31,6 +31,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAccount } from "wagmi";
 import { ConnectKitButton } from "connectkit";
 import { CertificateModals } from "../../components/certificate-modals";
+import { ethers } from "ethers";
+import CertificateNFT from "@/contracts/CertificateNFT.json";
+
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 
 // Mock data
 const dashboardStats = {
@@ -72,6 +76,44 @@ export default function AdminDashboard() {
   const { address, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
+  const [issuerName, setIssuerName] = useState<string | null>(null);
+  const [isAuthorized, setisAuthorized] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkIssuer = async () => {
+      if (!address) return;
+
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+
+        if (!CONTRACT_ADDRESS) {
+          throw new Error("Contract address is not defined.");
+        }
+
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CertificateNFT.abi,
+          provider
+        );
+
+        const isRegistered = await contract.isRegisteredIssuer(address);
+        const name = await contract.issuerNames(address);
+
+        if (isRegistered && name) {
+          setIssuerName(name);
+          setisAuthorized(true);
+        } else {
+          setIssuerName(null);
+          setisAuthorized(false);
+        }
+      } catch (err) {
+        console.error("Failed to check issuer status", err);
+        setisAuthorized(false);
+      }
+    };
+
+    checkIssuer();
+  }, [address]);
 
   // Modal states
   const [issueCertificateOpen, setIssueCertificateOpen] = useState(false);
@@ -276,6 +318,28 @@ export default function AdminDashboard() {
             </div>
           </div>
         </main>
+      </div>
+    );
+  }
+
+  if (isConnected && !isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-black text-white px-6">
+        <div className="max-w-md text-center space-y-6">
+          <Shield className="w-12 h-12 mx-auto text-red-500" />
+          <h2 className="text-2xl font-bold">Access Denied</h2>
+          <p className="text-slate-400">
+            This wallet is not a registered certificate issuer. Please contact
+            the system administrator to be added.
+          </p>
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outline"
+            className="text-black hover:cursor-pointer"
+          >
+            Try Again
+          </Button>
+        </div>
       </div>
     );
   }
@@ -657,6 +721,7 @@ export default function AdminDashboard() {
         revokeCertificateOpen={revokeCertificateOpen}
         setRevokeCertificateOpen={setRevokeCertificateOpen}
         selectedCertificate={selectedCertificate}
+        issuerName={issuerName}
       />
     </div>
   );
