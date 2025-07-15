@@ -295,7 +295,7 @@ export function CertificateModals({
             <Button
               variant="outline"
               onClick={() => setIssueCertificateOpen(false)}
-              className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700"
+              className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700 hover:cursor-pointer"
             >
               Cancel
             </Button>

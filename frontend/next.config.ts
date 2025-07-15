@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
       {
         hostname: "cdn.create.microsoft.com",
       },
+      {
+        hostname: "ipfs.io",
+      },
     ],
   },
 };

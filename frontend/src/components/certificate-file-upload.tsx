@@ -160,7 +160,7 @@ export function CertificateFileUpload({
                 <Button
                   type="button"
                   variant="outline"
-                  className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
+                  className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer"
                   disabled={disabled || isUploading}
                   onClick={() =>
                     document.getElementById("certificate-file-input")?.click()

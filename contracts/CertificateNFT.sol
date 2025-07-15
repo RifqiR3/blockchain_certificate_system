@@ -16,6 +16,12 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
     // Track latest minted token ID
     uint256 private _tokenIds;
 
+    // Mapping to check if an address is a registered issuer
+    mapping (address => bool) public isRegisteredIssuer;
+
+    // Mapping from issuer address to issuer name
+    mapping (address => string) public issuerNames;
+
     // Store certificate revocation status
     mapping(uint256 => bool) private _revoked;
 
@@ -27,6 +33,11 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
 
     constructor() ERC721("CertificateNFT", "CERT") Ownable() {}
 
+    modifier onlyRegisteredIssuer() {
+        require(isRegisteredIssuer[msg.sender], "Not a registered issuer");
+        _;
+    }
+
     function getActiveCertificateCount() public view returns (uint256) {
         return _activeCertificates.length; // Return the count of active certificates
     }
@@ -36,7 +47,7 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         return _activeCertificates[index]; // Return the token ID at the specified index
     }
 
-    function mintCertificate(address recipient, string memory metadataURI, uint256 expirationTimestamps) public onlyOwner returns (uint256) {
+    function mintCertificate(address recipient, string memory metadataURI, uint256 expirationTimestamps) public onlyRegisteredIssuer returns (uint256) {
         _tokenIds++; // Increment the token ID for each new certificate
         uint256 newTokenId = _tokenIds; // Generate a new token ID
 
@@ -123,5 +134,20 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         if (_scanIndex >= _activeCertificates.length) {
             _scanIndex = 0; // Reset scan index if it exceeds the length of active certificates
         }
+    }
+
+    function registerIssuer(address issuer, string calldata name) external onlyOwner {
+        require(!isRegisteredIssuer[issuer], "Issuer already registered!");
+        require(bytes(name).length > 0, "Name cannot be empty");
+
+        isRegisteredIssuer[issuer] = true;
+        issuerNames[issuer] = name;
+    }
+
+    function revokeIssuer(address issuer) external onlyOwner {
+        require(isRegisteredIssuer[issuer], "Issuer not registered");
+
+        isRegisteredIssuer[issuer] = false;
+        issuerNames[issuer] = "";
     }
 }

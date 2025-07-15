@@ -224,8 +224,7 @@ export default function StudentDashboard() {
   };
 
   const generateVerificationLink = (certificate: Certificate) => {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/?verify=${certificate.tokenId}`;
+    return `ipfs://${certificate.ipfsHash}`;
   };
 
   const copyVerificationLink = (certificate: Certificate) => {
