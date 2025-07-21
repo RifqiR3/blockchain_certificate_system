@@ -195,9 +195,7 @@ export default function AdminDashboard() {
           <div className="flex items-center space-x-3">
             <Shield className="h-8 w-8 text-purple-400" />
             <div>
-              <h1 className="text-2xl font-bold text-white">
-                CertifyChain Admin
-              </h1>
+              <h1 className="text-2xl font-bold text-white">SealChain Admin</h1>
               <p className="text-slate-400 text-sm">
                 Certificate Management System
               </p>
@@ -357,9 +355,7 @@ export default function AdminDashboard() {
         <div className="flex items-center space-x-3">
           <Shield className="h-8 w-8 text-purple-400" />
           <div>
-            <h1 className="text-2xl font-bold text-white">
-              CertifyChain Admin
-            </h1>
+            <h1 className="text-2xl font-bold text-white">SealChain Admin</h1>
             <p className="text-slate-400 text-sm">
               Certificate Management System
             </p>
@@ -426,28 +422,28 @@ export default function AdminDashboard() {
           <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-md border-white/20 mb-8">
             <TabsTrigger
               value="dashboard"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Dashboard
             </TabsTrigger>
             <TabsTrigger
               value="certificates"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
             >
               <FileText className="h-4 w-4 mr-2" />
               Certificates
             </TabsTrigger>
             <TabsTrigger
               value="users"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
             >
               <Users className="h-4 w-4 mr-2" />
               Users
             </TabsTrigger>
             <TabsTrigger
               value="settings"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
             >
               <Settings className="h-4 w-4 mr-2" />
               Settings
@@ -491,7 +487,7 @@ export default function AdminDashboard() {
                   Recent Certificate Activity
                   <Button
                     size="sm"
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="bg-purple-600 hover:bg-purple-700 hover:cursor-pointer"
                     onClick={() => setIssueCertificateOpen(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -571,7 +567,7 @@ export default function AdminDashboard() {
                 Certificate Management
               </h2>
               <Button
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-purple-600 hover:bg-purple-700 hover:cursor-pointer"
                 onClick={() => setIssueCertificateOpen(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -635,7 +631,7 @@ export default function AdminDashboard() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="bg-white/5 border-white/20 text-white"
+                          className="bg-white/5 border-white/20 text-white hover:cursor-pointer"
                           onClick={() => handleViewCertificate(cert)}
                         >
                           View
@@ -643,7 +639,7 @@ export default function AdminDashboard() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="bg-white/5 border-white/20 text-white"
+                          className="bg-white/5 border-white/20 text-white hover:cursor-pointer"
                           onClick={() => handleEditCertificate(cert)}
                         >
                           Edit
@@ -652,6 +648,7 @@ export default function AdminDashboard() {
                           variant="destructive"
                           size="sm"
                           onClick={() => handleRevokeCertificate(cert)}
+                          className="hover:cursor-pointer"
                         >
                           Revoke
                         </Button>

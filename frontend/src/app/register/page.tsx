@@ -2,20 +2,17 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Shield,
   User,
   Wallet,
   Building2,
-  Mail,
-  MapPin,
   FileText,
   CheckCircle,
   AlertTriangle,
   XCircle,
-  Globe,
-  Phone,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAccount } from "wagmi";
 import { ConnectKitButton } from "connectkit";
-import { toast } from "sonner";
+import { Toaster, toast } from "sonner";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
 import {
@@ -49,100 +46,79 @@ const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 const SUPERADMIN_WALLET =
   "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266".toLowerCase();
 
-const mockIssuers = [
-  {
-    id: "issuer-001",
-    organizationName: "Blockchain University",
-    adminWalletAddress: "0x742d35Cc6634C0532925a3b8D404d3aABe09e3b1",
-    contactEmail: "admin@blockchain-university.edu",
-    contactPhone: "+1 (555) 123-4567",
-    website: "https://blockchain-university.edu",
-    description:
-      "Leading institution in blockchain education and certification",
-    address: "123 Tech Street",
-    city: "San Francisco",
-    country: "United States",
-    logoUrl: "/placeholder.svg?height=64&width=64",
-    status: "active",
-    registeredDate: "2024-01-15",
-    certificatesIssued: 1247,
-  },
-  {
-    id: "issuer-002",
-    organizationName: "DeFi Academy",
-    adminWalletAddress: "0x8ba1f109551bD432803012645Hac136c22C501e",
-    contactEmail: "contact@defi-academy.com",
-    contactPhone: "+44 20 7946 0958",
-    website: "https://defi-academy.com",
-    description:
-      "Specialized training in decentralized finance protocols and development",
-    address: "456 Finance Ave",
-    city: "London",
-    country: "United Kingdom",
-    logoUrl: "/placeholder.svg?height=64&width=64",
-    status: "active",
-    registeredDate: "2024-02-20",
-    certificatesIssued: 892,
-  },
-  {
-    id: "issuer-003",
-    organizationName: "Web3 Institute",
-    adminWalletAddress: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-    contactEmail: "info@web3-institute.org",
-    contactPhone: "+49 30 12345678",
-    website: "https://web3-institute.org",
-    description: "Comprehensive Web3 development and NFT creation courses",
-    address: "789 Innovation Blvd",
-    city: "Berlin",
-    country: "Germany",
-    logoUrl: "/placeholder.svg?height=64&width=64",
-    status: "revoked",
-    registeredDate: "2023-12-10",
-    certificatesIssued: 543,
-  },
-  {
-    id: "issuer-004",
-    organizationName: "Security Labs",
-    adminWalletAddress: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
-    contactEmail: "security@security-labs.io",
-    contactPhone: "+1 (555) 987-6543",
-    website: "https://security-labs.io",
-    description:
-      "Professional smart contract security auditing and certification",
-    address: "321 Security Plaza",
-    city: "Austin",
-    country: "United States",
-    logoUrl: "/placeholder.svg?height=64&width=64",
-    status: "active",
-    registeredDate: "2024-03-01",
-    certificatesIssued: 234,
-  },
-];
+interface Issuer {
+  address: string;
+  name: string;
+  isActive: boolean;
+}
 
 export default function RegisterIssuer() {
   const { address, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("register");
   const isSuperAdmin = address?.toLowerCase() === SUPERADMIN_WALLET;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [issuers, setIssuers] = useState(mockIssuers);
+  const [issuers, setIssuers] = useState<Issuer[]>([]);
+  const [isLoadingIssuers, setIsLoadingIssuers] = useState(false);
   const [formData, setFormData] = useState({
-    organizationName: "",
-    adminWalletAddress: "",
-    contactEmail: "",
-    contactPhone: "",
-    website: "",
-    description: "",
+    name: "",
     address: "",
-    city: "",
-    country: "",
-    logoUrl: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [revokedModalOpen, setRevokeModalOpen] = useState(false);
-  const [selectedIssuer, setSelectedIssuer] = useState<any>(null);
+  const [selectedIssuer, setSelectedIssuer] = useState<Issuer | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
+
+  useEffect(() => {
+    if (isConnected && isSuperAdmin) {
+      fetchIssuers();
+    }
+  }, [isConnected, isSuperAdmin]);
+
+  const fetchIssuers = async () => {
+    setIsLoadingIssuers(true);
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CertificateNFT.abi,
+        provider
+      );
+
+      const fetchedIssuers: Issuer[] = [];
+
+      try {
+        const events = await contract.queryFilter(
+          contract.filters.IssuerRegistered()
+        );
+        for (const event of events) {
+          if ("args" in event && event.args) {
+            const issuerAddress = event.args.issuer;
+            const isActive = await contract.isRegisteredIssuer(issuerAddress);
+            const name = await contract.issuerNames(issuerAddress);
+
+            if (name) {
+              fetchedIssuers.push({
+                address: issuerAddress,
+                name,
+                isActive,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Couldn't fetch from events", error);
+      }
+
+      setIssuers(fetchedIssuers);
+    } catch (error) {
+      console.error("Failed to fetch issuers", error);
+      toast.error("Failed to fetch issuers");
+    } finally {
+      setIsLoadingIssuers(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -155,28 +131,14 @@ export default function RegisterIssuer() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.organizationName.trim()) {
-      newErrors.organizationName = "Organization name is required";
+    if (!formData.name.trim()) {
+      newErrors.name = "Issuer name is required";
     }
 
-    if (!formData.adminWalletAddress.trim()) {
-      newErrors.adminWalletAddress = "Admin wallet address is required";
-    } else if (!formData.adminWalletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-      newErrors.adminWalletAddress = "Invalid wallet address format";
-    }
-
-    if (!formData.contactEmail.trim()) {
-      newErrors.contactEmail = "Contact email is required";
-    } else if (!formData.contactEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      newErrors.contactEmail = "Invalid email format";
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = "Organization description is required";
-    }
-
-    if (!formData.country.trim()) {
-      newErrors.country = "Country is required";
+    if (!formData.address.trim()) {
+      newErrors.name = "Wallet address is required";
+    } else if (!formData.address.match(/^0x[a-fA-F0-9]{40}$/)) {
+      newErrors.address = "Invalid wallet address format";
     }
 
     setErrors(newErrors);
@@ -202,26 +164,15 @@ export default function RegisterIssuer() {
         signer
       );
 
-      const tx = await contract.registerIssuer(
-        formData.adminWalletAddress,
-        formData.organizationName
-      );
+      const tx = await contract.registerIssuer(formData.address, formData.name);
       await tx.wait();
 
       toast.success("Issuer registered successfully");
 
       // Reset form
       setFormData({
-        organizationName: "",
-        adminWalletAddress: "",
-        contactEmail: "",
-        contactPhone: "",
-        website: "",
-        description: "",
+        name: "",
         address: "",
-        city: "",
-        country: "",
-        logoUrl: "",
       });
     } catch (error) {
       console.error("Failed to register issuer", error);
@@ -231,7 +182,7 @@ export default function RegisterIssuer() {
     }
   };
 
-  const handleRevokeIssuer = async (issuer: any) => {
+  const handleRevokeIssuer = async (issuer: Issuer) => {
     setSelectedIssuer(issuer);
     setRevokeModalOpen(true);
   };
@@ -240,49 +191,46 @@ export default function RegisterIssuer() {
     if (!selectedIssuer || !revokeReason.trim()) return;
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setIssuers((prev) =>
-        prev.map((i) =>
-          i.id === selectedIssuer.id ? { ...i, status: "revoked" } : i
-        )
+      setIsSubmitting(true);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CertificateNFT.abi,
+        signer
       );
 
-      toast.success(
-        `${selectedIssuer.organizationName} has been revoked successfully`
-      );
+      const tx = await contract.revokeIssuer(selectedIssuer.address);
+      await tx.wait();
+
+      toast.success(`${selectedIssuer.name} has been revoked successfully`);
+      fetchIssuers();
       setRevokeModalOpen(false);
       setRevokeReason("");
       setSelectedIssuer(null);
     } catch (error) {
-      toast.error("Failed to revoke issuer. Please try again");
       console.error("Failed to revoke issuer", error);
+      toast.error("Failed to revoke issuer. Please try again");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return (
-          <Badge className="bg-green-600/20 text-green-300 border-green-400/30">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Active
-          </Badge>
-        );
-      case "revoked":
-        return (
-          <Badge className="bg-red-600/20 text-red-300 border-red-400/30">
-            <XCircle className="h-3 w-3 mr-1" />
-            Revoked
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-600/20 text-gray-300 border-gray-400/30">
-            Unknown
-          </Badge>
-        );
+  const getStatusBadge = (isActive: boolean) => {
+    if (isActive) {
+      return (
+        <Badge className="bg-green-600/20 text-green-300 border-green-400/30">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Active
+        </Badge>
+      );
     }
+    return (
+      <Badge className="bg-red-600/20 text-red-300 border-red-400/30">
+        <XCircle className="h-3 w-3 mr-1" />
+        Revoked
+      </Badge>
+    );
   };
 
   // Wallet Not Connected State
@@ -510,7 +458,7 @@ export default function RegisterIssuer() {
                       <Button
                         onClick={show}
                         variant="outline"
-                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2"
+                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 hover:cursor-pointer"
                       >
                         <Wallet className="h-4 w-4" />
                         <span>Wallet Settings</span>
@@ -554,249 +502,57 @@ export default function RegisterIssuer() {
                 <CardHeader>
                   <CardTitle className="text-white flex items-center space-x-2 text-2xl">
                     <Building2 className="h-6 w-6 text-purple-400" />
-                    <span>Register New Issuer Organization</span>
+                    <span>Register New Issuer</span>
                   </CardTitle>
                   <p className="text-slate-400">
-                    Fill in the details below to register a new certificate
-                    issuer organization.
+                    Register a new certificate issuer by providing their name
+                    and wallet address.
                   </p>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Organization Information */}
                     <div className="space-y-6">
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Building2 className="h-5 w-5 text-purple-400" />
-                        <h3 className="text-lg font-semibold text-white">
-                          Organization Information
-                        </h3>
-                      </div>
-
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label
-                            htmlFor="organizationName"
-                            className="text-slate-300"
-                          >
-                            Organization Name *
+                          <Label htmlFor="name" className="text-slate-300">
+                            Issuer Name *
                           </Label>
                           <Input
-                            id="organizationName"
+                            id="name"
                             placeholder="e.g., Blockchain University"
-                            value={formData.organizationName}
+                            value={formData.name}
                             onChange={(e) =>
-                              handleInputChange(
-                                "organizationName",
-                                e.target.value
-                              )
+                              handleInputChange("name", e.target.value)
                             }
                             className={`bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 ${
-                              errors.organizationName ? "border-red-400" : ""
+                              errors.name ? "border-red-400" : ""
                             }`}
                           />
-                          {errors.organizationName && (
+                          {errors.name && (
                             <p className="text-red-400 text-sm">
-                              {errors.organizationName}
+                              {errors.name}
                             </p>
                           )}
                         </div>
 
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="adminWalletAddress"
-                            className="text-slate-300"
-                          >
-                            Admin Wallet Address *
-                          </Label>
-                          <Input
-                            id="adminWalletAddress"
-                            placeholder="0x..."
-                            value={formData.adminWalletAddress}
-                            onChange={(e) =>
-                              handleInputChange(
-                                "adminWalletAddress",
-                                e.target.value
-                              )
-                            }
-                            className={`bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 font-mono ${
-                              errors.adminWalletAddress ? "border-red-400" : ""
-                            }`}
-                          />
-                          {errors.adminWalletAddress && (
-                            <p className="text-red-400 text-sm">
-                              {errors.adminWalletAddress}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="logoUrl" className="text-slate-300">
-                            Logo URL (Optional)
-                          </Label>
-                          <Input
-                            id="logoUrl"
-                            placeholder="https://example.com/logo.png"
-                            value={formData.logoUrl}
-                            onChange={(e) =>
-                              handleInputChange("logoUrl", e.target.value)
-                            }
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="website" className="text-slate-300">
-                            Website (Optional)
-                          </Label>
-                          <Input
-                            id="website"
-                            placeholder="https://example.com"
-                            value={formData.website}
-                            onChange={(e) =>
-                              handleInputChange("website", e.target.value)
-                            }
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="description" className="text-slate-300">
-                          Organization Description *
-                        </Label>
-                        <Textarea
-                          id="description"
-                          placeholder="Describe the organization and its mission..."
-                          value={formData.description}
-                          onChange={(e) =>
-                            handleInputChange("description", e.target.value)
-                          }
-                          className={`bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 min-h-[100px] ${
-                            errors.description ? "border-red-400" : ""
-                          }`}
-                        />
-                        {errors.description && (
-                          <p className="text-red-400 text-sm">
-                            {errors.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Contact Information */}
-                    <div className="space-y-6">
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Mail className="h-5 w-5 text-blue-400" />
-                        <h3 className="text-lg font-semibold text-white">
-                          Contact Information
-                        </h3>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="contactEmail"
-                            className="text-slate-300"
-                          >
-                            Contact Email *
-                          </Label>
-                          <Input
-                            id="contactEmail"
-                            type="email"
-                            placeholder="admin@example.com"
-                            value={formData.contactEmail}
-                            onChange={(e) =>
-                              handleInputChange("contactEmail", e.target.value)
-                            }
-                            className={`bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 ${
-                              errors.contactEmail ? "border-red-400" : ""
-                            }`}
-                          />
-                          {errors.contactEmail && (
-                            <p className="text-red-400 text-sm">
-                              {errors.contactEmail}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="contactPhone"
-                            className="text-slate-300"
-                          >
-                            Contact Phone (Optional)
-                          </Label>
-                          <Input
-                            id="contactPhone"
-                            placeholder="+1 (555) 123-4567"
-                            value={formData.contactPhone}
-                            onChange={(e) =>
-                              handleInputChange("contactPhone", e.target.value)
-                            }
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Address Information */}
-                    <div className="space-y-6">
-                      <div className="flex items-center space-x-2 mb-4">
-                        <MapPin className="h-5 w-5 text-green-400" />
-                        <h3 className="text-lg font-semibold text-white">
-                          Address Information
-                        </h3>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="address" className="text-slate-300">
-                            Street Address (Optional)
+                            Wallet Address *
                           </Label>
                           <Input
                             id="address"
-                            placeholder="123 Main Street"
+                            placeholder="0x..."
                             value={formData.address}
                             onChange={(e) =>
                               handleInputChange("address", e.target.value)
                             }
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="city" className="text-slate-300">
-                            City (Optional)
-                          </Label>
-                          <Input
-                            id="city"
-                            placeholder="New York"
-                            value={formData.city}
-                            onChange={(e) =>
-                              handleInputChange("city", e.target.value)
-                            }
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="country" className="text-slate-300">
-                            Country *
-                          </Label>
-                          <Input
-                            id="country"
-                            placeholder="United States"
-                            value={formData.country}
-                            onChange={(e) =>
-                              handleInputChange("country", e.target.value)
-                            }
-                            className={`bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 ${
-                              errors.country ? "border-red-400" : ""
+                            className={`bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 font-mono ${
+                              errors.address ? "border-red-400" : ""
                             }`}
                           />
-                          {errors.country && (
+                          {errors.address && (
                             <p className="text-red-400 text-sm">
-                              {errors.country}
+                              {errors.address}
                             </p>
                           )}
                         </div>
@@ -812,10 +568,8 @@ export default function RegisterIssuer() {
                         </h4>
                       </div>
                       <p className="text-green-200 text-sm">
-                        Once registered, the organization will be able to issue
-                        certificates using their admin wallet address. They will
-                        have access to the admin dashboard to manage their
-                        certificates.
+                        Once registered, the issuer will be able to issue
+                        certificates using their wallet address.
                       </p>
                     </div>
 
@@ -824,19 +578,11 @@ export default function RegisterIssuer() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700"
+                        className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700 hover:cursor-pointer"
                         onClick={() => {
                           setFormData({
-                            organizationName: "",
-                            adminWalletAddress: "",
-                            contactEmail: "",
-                            contactPhone: "",
-                            website: "",
-                            description: "",
+                            name: "",
                             address: "",
-                            city: "",
-                            country: "",
-                            logoUrl: "",
                           });
                           setErrors({});
                         }}
@@ -846,7 +592,7 @@ export default function RegisterIssuer() {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8"
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8 hover:cursor-pointer"
                       >
                         {isSubmitting ? (
                           <div className="flex items-center space-x-2">
@@ -881,165 +627,120 @@ export default function RegisterIssuer() {
                         {issuers.length} Total
                       </Badge>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchIssuers}
+                      disabled={isLoadingIssuers}
+                      className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700 hover:cursor-pointer"
+                    >
+                      {isLoadingIssuers ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                          <span>Refreshing...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh
+                        </>
+                      )}
+                    </Button>
                   </CardTitle>
                   <p className="text-slate-400">
-                    Manage all registered certificate issuer organizations.
+                    Manage all registered certificate issuers.
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {issuers.map((issuer) => (
-                      <Card
-                        key={issuer.id}
-                        className="bg-slate-800/30 border-slate-600 hover:bg-slate-800/50 transition-all duration-200"
-                      >
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-4 flex-1">
-                              {/* Logo */}
-                              <Avatar className="h-16 w-16 border-2 border-slate-600">
-                                <AvatarImage
-                                  src={issuer.logoUrl || "/placeholder.svg"}
-                                  alt={issuer.organizationName}
-                                />
-                                <AvatarFallback className="bg-slate-700 text-white text-lg">
-                                  {issuer.organizationName.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
+                  {isLoadingIssuers ? (
+                    <div className="flex justify-center items-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                  ) : issuers.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400">
+                      No issuers registered yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {issuers.map((issuer, index) => (
+                        <Card
+                          key={index}
+                          className="bg-slate-800/30 border-slate-600 hover:bg-slate-800/50 transition-all duration-200"
+                        >
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start space-x-4 flex-1">
+                                <Avatar className="h-16 w-16 border-2 border-slate-600">
+                                  <AvatarFallback className="bg-slate-700 text-white text-lg">
+                                    {issuer.name.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
 
-                              {/* Organization Details */}
-                              <div className="flex-1 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <h3 className="text-xl font-semibold text-white">
-                                      {issuer.organizationName}
-                                    </h3>
-                                    <p className="text-slate-400 text-sm">
-                                      {issuer.description}
-                                    </p>
-                                  </div>
-                                  {getStatusBadge(issuer.status)}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                                  <div className="flex items-center space-x-2">
-                                    <Wallet className="h-4 w-4 text-purple-400" />
+                                <div className="flex-1 space-y-3">
+                                  <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-slate-400">
-                                        Admin Wallet
-                                      </p>
-                                      <p className="text-white font-mono text-xs">
-                                        {issuer.adminWalletAddress.slice(0, 6)}
-                                        ...{issuer.adminWalletAddress.slice(-4)}
-                                      </p>
+                                      <h3 className="text-xl font-semibold text-white">
+                                        {issuer.name}
+                                      </h3>
                                     </div>
+                                    {getStatusBadge(issuer.isActive)}
                                   </div>
 
-                                  <div className="flex items-center space-x-2">
-                                    <Mail className="h-4 w-4 text-blue-400" />
-                                    <div>
-                                      <p className="text-slate-400">Contact</p>
-                                      <p className="text-white">
-                                        {issuer.contactEmail}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center space-x-2">
-                                    <MapPin className="h-4 w-4 text-green-400" />
-                                    <div>
-                                      <p className="text-slate-400">Location</p>
-                                      <p className="text-white">
-                                        {issuer.city}, {issuer.country}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {issuer.website && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                     <div className="flex items-center space-x-2">
-                                      <Globe className="h-4 w-4 text-cyan-400" />
+                                      <Wallet className="h-4 w-4 text-purple-400" />
                                       <div>
                                         <p className="text-slate-400">
-                                          Website
+                                          Wallet Address
                                         </p>
-                                        <a
-                                          href={issuer.website}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-cyan-300 hover:text-cyan-200 text-sm"
-                                        >
-                                          Visit Site
-                                        </a>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {issuer.contactPhone && (
-                                    <div className="flex items-center space-x-2">
-                                      <Phone className="h-4 w-4 text-yellow-400" />
-                                      <div>
-                                        <p className="text-slate-400">Phone</p>
-                                        <p className="text-white">
-                                          {issuer.contactPhone}
+                                        <p className="text-white font-mono text-xs">
+                                          {issuer.address.slice(0, 6)}...
+                                          {issuer.address.slice(-4)}
                                         </p>
                                       </div>
-                                    </div>
-                                  )}
-
-                                  <div className="flex items-center space-x-2">
-                                    <FileText className="h-4 w-4 text-orange-400" />
-                                    <div>
-                                      <p className="text-slate-400">
-                                        Certificates
-                                      </p>
-                                      <p className="text-white">
-                                        {issuer.certificatesIssued.toLocaleString()}
-                                      </p>
                                     </div>
                                   </div>
-                                </div>
 
-                                <div className="flex items-center justify-between pt-2">
-                                  <p className="text-slate-500 text-xs">
-                                    Registered: {issuer.registeredDate}
-                                  </p>
-
-                                  <div className="flex items-center space-x-2">
-                                    {issuer.status === "active" ? (
-                                      <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleRevokeIssuer(issuer)
-                                        }
-                                        className="bg-red-600 hover:bg-red-700 hover:cursor-pointer"
-                                      >
-                                        <XCircle className="h-4 w-4 mr-1" />
-                                        Revoke Access
-                                      </Button>
-                                    ) : (
-                                      <div className="flex items-center space-x-2 text-red-400">
-                                        <XCircle className="h-4 w-4" />
-                                        <span className="text-sm">
-                                          Permanently Revoked
-                                        </span>
-                                      </div>
-                                    )}
+                                  <div className="flex items-center justify-between pt-2">
+                                    <div className="flex items-center space-x-2">
+                                      {issuer.isActive ? (
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleRevokeIssuer(issuer)
+                                          }
+                                          className="bg-red-900/100 border border-red-400/30 hover:bg-red-700 hover:cursor-pointer"
+                                        >
+                                          <XCircle className="h-4 w-4 mr-1" />
+                                          Revoke Access
+                                        </Button>
+                                      ) : (
+                                        <div className="flex items-center space-x-2 text-red-400">
+                                          <XCircle className="h-4 w-4" />
+                                          <span className="text-sm">
+                                            Revoked
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
         </div>
       </main>
+
+      <Toaster position="top-right" />
 
       {/* Revoke Confirmation Modal */}
       <Dialog open={revokedModalOpen} onOpenChange={setRevokeModalOpen}>
@@ -1063,15 +764,12 @@ export default function RegisterIssuer() {
               </div>
               <p className="text-red-200 text-sm">
                 You are about to permanently revoke access for{" "}
-                <span className="font-semibold">
-                  {selectedIssuer?.organizationName}
-                </span>
-                . This will:
+                <span className="font-semibold">{selectedIssuer?.name}</span>.
+                This will:
               </p>
               <ul className="text-red-200 text-sm mt-2 ml-4 space-y-1">
                 <li>• Prevent them from issuing new certificates</li>
                 <li>• Disable their admin dashboard access</li>
-                <li>• Mark their organization as permanently revoked</li>
                 <li>• Cannot be reversed or reactivated</li>
               </ul>
             </div>
@@ -1080,34 +778,16 @@ export default function RegisterIssuer() {
               <div className="bg-slate-800/30 rounded-lg p-4 border border-slate-600">
                 <div className="flex items-center space-x-3 mb-3">
                   <Avatar className="h-12 w-12 border-2 border-slate-600">
-                    <AvatarImage
-                      src={selectedIssuer.logoUrl || "/placeholder.svg"}
-                      alt={selectedIssuer.organizationName}
-                    />
                     <AvatarFallback className="bg-slate-700 text-white">
-                      {selectedIssuer.organizationName.charAt(0)}
+                      {selectedIssuer.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-white font-semibold">
-                      {selectedIssuer.organizationName}
+                      {selectedIssuer.name}
                     </p>
                     <p className="text-slate-400 text-sm font-mono">
-                      {selectedIssuer.adminWalletAddress}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-400">Certificates Issued</p>
-                    <p className="text-white">
-                      {selectedIssuer.certificatesIssued?.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Registered</p>
-                    <p className="text-white">
-                      {selectedIssuer.registeredDate}
+                      {selectedIssuer.address}
                     </p>
                   </div>
                 </div>
@@ -1146,11 +826,20 @@ export default function RegisterIssuer() {
             <Button
               onClick={confirmRevokeIssuer}
               variant="destructive"
-              disabled={!revokeReason.trim()}
-              className="bg-red-600 hover:bg-red-700"
+              disabled={!revokeReason.trim() || isSubmitting}
+              className="bg-red-900/20 border border-red-400/30 hover:bg-red-700 hover:cursor-pointer"
             >
-              <XCircle className="h-4 w-4 mr-2" />
-              Permanently Revoke Access
+              {isSubmitting ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Revoking...</span>
+                </div>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Permanently Revoke Access
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

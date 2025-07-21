@@ -74,6 +74,8 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
     }
 
     event CertificateExpired(uint256 tokenId);
+    event IssuerRegistered(address indexed issuer, string name);
+    event IssuerRevoked(address indexed issuer);
     
     function expireCertificate(uint256 tokenId) public onlyOwner {
         require(_exists(tokenId), "Certificate does not exist");
@@ -142,12 +144,14 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
 
         isRegisteredIssuer[issuer] = true;
         issuerNames[issuer] = name;
+        emit IssuerRegistered(issuer, name);
     }
 
     function revokeIssuer(address issuer) external onlyOwner {
         require(isRegisteredIssuer[issuer], "Issuer not registered");
 
         isRegisteredIssuer[issuer] = false;
-        issuerNames[issuer] = "";
+        // issuerNames[issuer] = ""; keeping the name for historical reference
+        emit IssuerRevoked(issuer);
     }
 }
