@@ -19,6 +19,7 @@ import { CertificateFilePreview } from "./certificate-file-preview";
 import { CertificateFileUpload } from "./certificate-file-upload";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
+import { Toaster, toast } from "sonner";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 
@@ -596,18 +597,46 @@ export function CertificateModals({
     }, [revokeCertificateOpen]);
 
     const [isRevoking, setIsRevoking] = useState(false);
+    const [txHash, setTxHash] = useState<string | null>(null);
 
-    const handleRevokeCertificate = () => {
+    const handleRevokeCertificate = async () => {
+      if (!selectedCertificate || !localRevokeReason.trim()) return;
+
       setIsRevoking(true);
-      // Handle certificate revocation logic here
-      console.log(
-        "Revoking certificate:",
-        selectedCertificate?.id,
-        "Reason:",
-        localRevokeReason
-      );
-      setRevokeCertificateOpen(false);
-      setLocalRevokeReason("");
+      try {
+        // Check Metamask
+        if (!window.ethereum) {
+          throw new Error("Metamask not found");
+        }
+
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CertificateNFT.abi,
+          signer
+        );
+
+        const tx = await contract.revokeCertificate(selectedCertificate.id);
+        setTxHash(tx.hash);
+
+        await tx.wait();
+
+        setRevokeCertificateOpen(false);
+
+        toast.success("Certificate revoked successfully");
+      } catch (error) {
+        console.error("Revocation failed:", error);
+        alert(
+          `Failed to revoke certificate: ${
+            error instanceof Error ? error.message : String(error)
+          }}`
+        );
+      } finally {
+        setIsRevoking(false);
+      }
     };
 
     return (
@@ -634,7 +663,7 @@ export function CertificateModals({
                 <h4 className="font-semibold text-red-300">Warning</h4>
               </div>
               <p className="text-red-200 text-sm">
-                You are about to revoke certificate{" "}
+                You are about to revoke certificate with tokenID:{" "}
                 <span className="font-mono">{selectedCertificate?.id}</span>.
                 This action is permanent and cannot be reversed.
               </p>
@@ -646,6 +675,7 @@ export function CertificateModals({
                 <p className="text-white font-medium">
                   {selectedCertificate.course}
                 </p>
+                <p className="text-slate-400 text-sm">Holder:</p>
                 <p className="text-slate-400 text-sm font-mono">
                   {selectedCertificate.holder}
                 </p>
@@ -680,7 +710,7 @@ export function CertificateModals({
             <Button
               onClick={handleRevokeCertificate}
               variant="destructive"
-              disabled={!localRevokeReason.trim()}
+              disabled={!localRevokeReason.trim() || isRevoking}
               className="bg-red-600 hover:bg-red-700"
             >
               {isRevoking ? (
@@ -704,6 +734,7 @@ export function CertificateModals({
       <ViewCertificateModal />
       <EditCertificateModal />
       <RevokeCertificateModal />
+      <Toaster position="top-right" />
     </>
   );
 }

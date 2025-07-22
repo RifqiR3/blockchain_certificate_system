@@ -63,7 +63,7 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         return newTokenId;
     }
 
-    function revokeCertificate(uint256 tokenId) public onlyOwner {
+    function revokeCertificate(uint256 tokenId) public onlyRegisteredIssuer {
         require(_exists(tokenId), "CertificateNFT: Token does not exist");
         _revoked[tokenId] = true;
     }

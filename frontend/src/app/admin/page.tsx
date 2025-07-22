@@ -260,17 +260,17 @@ export default function AdminDashboard() {
     </Card>
   );
 
-  const handleViewCertificate = (cert: any) => {
+  const handleViewCertificate = (cert: Certificate) => {
     setSelectedCertificate(cert);
     setViewCertificateOpen(true);
   };
 
-  const handleEditCertificate = (cert: any) => {
+  const handleEditCertificate = (cert: Certificate) => {
     setSelectedCertificate(cert);
     setEditCertificateOpen(true);
   };
 
-  const handleRevokeCertificate = (cert: any) => {
+  const handleRevokeCertificate = (cert: Certificate) => {
     setSelectedCertificate(cert);
     setRevokeCertificateOpen(true);
   };
@@ -710,7 +710,7 @@ export default function AdminDashboard() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       placeholder="Search certificates..."
-                      className="pl-10 bg-white/5 border-white/20"
+                      className="pl-10 bg-white/5 border-white/20 text-white"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -761,7 +761,11 @@ export default function AdminDashboard() {
                       .map((cert) => (
                         <div
                           key={cert.tokenId}
-                          className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                          className={`flex items-center justify-between p-4 rounded-lg border ${
+                            cert.isRevoked
+                              ? "bg-red-900/20 border-red-400/30"
+                              : "bg-white/5 border-white/10 hover:bg-white/10"
+                          } transition-colors`}
                         >
                           <div className="flex-1">
                             <div className="flex items-center space-x-3">
@@ -823,8 +827,7 @@ export default function AdminDashboard() {
                               size="sm"
                               className="bg-white/5 border-white/20 text-white hover:cursor-pointer"
                               onClick={() => {
-                                setSelectedCertificate(cert);
-                                setViewCertificateOpen(true);
+                                handleViewCertificate(cert);
                               }}
                             >
                               View
@@ -832,13 +835,16 @@ export default function AdminDashboard() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              className="hover:cursor-pointer"
-                              onClick={() => {
-                                setSelectedCertificate(cert);
-                                setRevokeCertificateOpen(true);
-                              }}
+                              disabled={cert.isRevoked}
+                              onClick={() => handleRevokeCertificate(cert)}
+                              className={
+                                cert.isRevoked
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "hover:cursor-pointer"
+                              }
                             >
-                              Revoke
+                              <XCircle className="h-4 w-4 mr-1" />
+                              {cert.isRevoked ? "Revoked" : "Revoke"}
                             </Button>
                           </div>
                         </div>
