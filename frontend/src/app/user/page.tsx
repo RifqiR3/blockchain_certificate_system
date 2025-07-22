@@ -699,10 +699,7 @@ export default function StudentDashboard() {
                             variant="outline"
                             className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer hover:text-white"
                             onClick={() =>
-                              window.open(
-                                `https://ipfs.io/ipfs/${certificate.ipfsHash}`,
-                                "_blank"
-                              )
+                              window.open(`${certificate.fileUrl}`, "_blank")
                             }
                           >
                             <Eye className="h-4 w-4 mr-1" />

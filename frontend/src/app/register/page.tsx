@@ -145,6 +145,31 @@ export default function RegisterIssuer() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const parseEthereumError = (error: any): string => {
+    // Check for revert reason
+    if (error.reason) return error.reason;
+
+    // Check for error data
+    if (error.data?.message) {
+      try {
+        const revertReason = error.data.message.match(
+          /reverted with reason string '(.+?)'/
+        );
+        if (revertReason) return revertReason[1];
+      } catch (e) {
+        console.warn("Couldn't parse error data", e);
+      }
+    }
+
+    // Check for JSON-RPC error
+    if (error.error?.data?.message) {
+      return error.error.data.message;
+    }
+
+    // Fallback to general error message
+    return error.message || "Unknown error occurred";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -176,7 +201,8 @@ export default function RegisterIssuer() {
       });
     } catch (error) {
       console.error("Failed to register issuer", error);
-      toast.error("Failed to register issuer. Please try again.");
+      const errorMessage = parseEthereumError(error);
+      toast.error(`Failed to register issuer: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

@@ -38,6 +38,10 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         _;
     }
 
+    function getExpirationTimestamp(uint256 tokenId) public view returns (uint256) {
+        return _expirationTimestamps[tokenId];
+    }
+
     function getActiveCertificateCount() public view returns (uint256) {
         return _activeCertificates.length; // Return the count of active certificates
     }

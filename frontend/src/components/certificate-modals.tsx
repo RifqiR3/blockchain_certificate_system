@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { FileText, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { CertificateFilePreview } from "./certificate-file-preview";
 import { CertificateFileUpload } from "./certificate-file-upload";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
@@ -31,6 +32,8 @@ interface Certificate {
   issuer?: string;
   description?: string;
   ipfsHash?: string;
+  isRevoked?: boolean;
+  isExpired?: boolean;
 }
 
 interface CertificateModalsProps {
@@ -88,8 +91,10 @@ export function CertificateModals({
     };
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isIssuing, setIsIssuing] = useState(false);
 
     const handleSubmit = async () => {
+      setIsIssuing(true);
       try {
         // Check if MetaMask is installed
         if (!window.ethereum) {
@@ -130,7 +135,7 @@ export function CertificateModals({
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("name", localFormData.course);
-        formData.append("issuer", "Your University"); // or add input if you want
+        formData.append("issuer", localFormData.issuer ?? "");
         formData.append("description", localFormData.description);
         formData.append("issueDate", localFormData.issueDate);
         formData.append("expiryDate", localFormData.expiryDate || "");
@@ -181,6 +186,8 @@ export function CertificateModals({
         } else {
           alert("❌ Failed to mint certificate: " + String(err));
         }
+      } finally {
+        setIsIssuing(false);
       }
     };
 
@@ -233,18 +240,19 @@ export function CertificateModals({
                   className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="issuer" className="text-slate-300">
-                  Issuer Organization
-                </Label>
-                <Input
-                  id="issuer"
-                  value={localFormData.issuer ?? ""}
-                  disabled
-                  className="bg-slate-800/30 border-slate-600 text-slate-400 cursor-not-allowed"
-                />
-                <p className="text-xs text-slate-500"></p>
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="issuer" className="text-slate-300">
+                Issuer Name
+              </Label>
+              <Input
+                id="issuer"
+                value={localFormData.issuer ?? ""}
+                disabled
+                className="bg-slate-800/30 border-slate-600 text-slate-400 cursor-not-allowed"
+              />
+              <p className="text-xs text-slate-500"></p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -326,7 +334,14 @@ export function CertificateModals({
                 !selectedFile
               }
             >
-              Issue Certificate
+              {isIssuing ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Issuing...</span>
+                </div>
+              ) : (
+                "Issue Certificate"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -357,12 +372,18 @@ export function CertificateModals({
                 </h3>
                 <Badge
                   variant={
-                    selectedCertificate.status === "active"
-                      ? "default"
-                      : "destructive"
+                    selectedCertificate.isRevoked
+                      ? "destructive"
+                      : selectedCertificate.isExpired
+                      ? "secondary"
+                      : "default"
                   }
                 >
-                  {selectedCertificate.status}
+                  {selectedCertificate.isRevoked
+                    ? "Revoked"
+                    : selectedCertificate.isExpired
+                    ? "Expired"
+                    : "Active"}
                 </Badge>
               </div>
 
@@ -374,62 +395,50 @@ export function CertificateModals({
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-400">Issue Date</p>
-                  <p className="text-white">{selectedCertificate.issueDate}</p>
+                  <p className="text-slate-400">Token ID</p>
+                  <p className="font-mono text-purple-400">
+                    {selectedCertificate.id}
+                  </p>
                 </div>
+                <div>
+                  <p className="text-slate-400">Issue Date</p>
+                  <p className="text-white">
+                    {new Date(
+                      selectedCertificate.issueDate * 1000
+                    ).toLocaleString()}
+                  </p>
+                </div>
+                {selectedCertificate.expiryDate &&
+                  !isNaN(Number(selectedCertificate.expiryDate)) &&
+                  Number(selectedCertificate.expiryDate) > 0 && (
+                    <div>
+                      <p className="text-slate-400">Expiration Date</p>
+                      <p className="text-white">
+                        {new Date(
+                          Number(selectedCertificate.expiryDate) * 1000
+                        ).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
                 <div className="md:col-span-2">
                   <p className="text-slate-400">Holder Address</p>
                   <p className="font-mono text-green-400 break-all">
                     {selectedCertificate.holder}
                   </p>
                 </div>
-                <div>
-                  <p className="text-slate-400">Issuer</p>
-                  <p className="text-white">
-                    {selectedCertificate.issuer || "Blockchain University"}
+                <div className="md:col-span-2">
+                  <p className="text-slate-400">Metadata URI</p>
+                  <p className="font-mono text-blue-400 break-all text-xs">
+                    {selectedCertificate.metadataURI}
                   </p>
                 </div>
-                <div>
-                  <p className="text-slate-400">Status</p>
-                  <div className="flex items-center space-x-2">
-                    {selectedCertificate.status === "active" ? (
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-400" />
-                    )}
-                    <span className="capitalize">
-                      {selectedCertificate.status}
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* Certificate File Display */}
-            <div className="space-y-2">
-              <Label className="text-slate-300">Certificate File</Label>
-              <CertificateFileUpload
-                value={undefined}
-                showPreview={true}
-                disabled={true}
-              />
-            </div>
-
-            <div className="bg-blue-900/20 border border-blue-400/30 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <CheckCircle className="h-5 w-5 text-blue-400" />
-                <h4 className="font-semibold text-blue-300">
-                  Blockchain Verification
-                </h4>
-              </div>
-              <p className="text-blue-200 text-sm">
-                This certificate has been verified on the blockchain and is
-                cryptographically secure.
-              </p>
-            </div>
+            {/* Add IPFS preview component here */}
+            <CertificateFilePreview ipfsHash={selectedCertificate.ipfsHash} />
           </div>
         )}
-
         <DialogFooter>
           <Button
             variant="outline"
@@ -586,7 +595,10 @@ export function CertificateModals({
       }
     }, [revokeCertificateOpen]);
 
+    const [isRevoking, setIsRevoking] = useState(false);
+
     const handleRevokeCertificate = () => {
+      setIsRevoking(true);
       // Handle certificate revocation logic here
       console.log(
         "Revoking certificate:",
@@ -671,7 +683,14 @@ export function CertificateModals({
               disabled={!localRevokeReason.trim()}
               className="bg-red-600 hover:bg-red-700"
             >
-              Revoke Certificate
+              {isRevoking ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Revoking...</span>
+                </div>
+              ) : (
+                "Revoke Certificate"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -36,48 +36,142 @@ import CertificateNFT from "@/contracts/CertificateNFT.json";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 
-// Mock data
-const dashboardStats = {
-  totalCertificates: 1247,
-  activeCertificates: 1089,
-  revokedCertificates: 158,
-  totalUsers: 892,
-  monthlyGrowth: 12.5,
-};
-
-const recentCertificates = [
-  {
-    id: "CERT-2024-001",
-    holder: "0x742d35Cc6634C0532925a3b8D404d3aABe09e3b1",
-    course: "Advanced Smart Contract Development",
-    issueDate: "2024-01-15",
-    status: "active",
-    ipfsHash: "QmExampleHash1234567890abcdef",
-  },
-  {
-    id: "CERT-2024-002",
-    holder: "0x8ba1f109551bD432803012645Hac136c22C501e",
-    course: "DeFi Protocol Design",
-    issueDate: "2024-01-14",
-    status: "active",
-    ipfsHash: "QmExampleHash0987654321fedcba",
-  },
-  {
-    id: "CERT-2024-003",
-    holder: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-    course: "NFT Development Fundamentals",
-    issueDate: "2024-01-13",
-    status: "revoked",
-    ipfsHash: "QmExampleHashRevoked111222333",
-  },
-];
-
+interface Certificate {
+  id: string;
+  tokenId: string;
+  holder: string;
+  issuer: string;
+  metadataURI: string;
+  ipfsHash: string;
+  issueDate: number;
+  expirationDate: number;
+  isRevoked: boolean;
+  isExpired: boolean;
+  course?: string;
+  description?: string;
+}
 export default function AdminDashboard() {
   const { address, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [issuerName, setIssuerName] = useState<string | null>(null);
   const [isAuthorized, setisAuthorized] = useState<boolean>(false);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [loadingCertificates, setLoadingCertificates] = useState(false);
+  const [certificateStats, setCertificateStats] = useState({
+    total: 0,
+    active: 0,
+    revoked: 0,
+    issuedByYou: 0,
+  });
+
+  useEffect(() => {
+    if (!isAuthorized || !address) return;
+
+    const fetchCertificates = async () => {
+      setLoadingCertificates(true);
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CertificateNFT.abi,
+          provider
+        );
+
+        // Get count and convert to number
+        const totalCountBigInt = await contract.getActiveCertificateCount();
+        const totalCount = Number(totalCountBigInt);
+        console.log(`Found ${totalCount} certificates`);
+
+        const fetchedCertificates: Certificate[] = [];
+        const batchSize = 10;
+
+        for (let i = 0; i < totalCount; i += batchSize) {
+          const end = Math.min(i + batchSize, totalCount);
+
+          const batchPromises = [];
+          for (let j = i; j < end; j++) {
+            batchPromises.push(
+              contract
+                .getActiveCertificateId(j)
+                .then(async (tokenId: bigint) => {
+                  const tokenIdStr = tokenId.toString();
+
+                  const [metadataURI, holder, isRevoked, expirationTimestamp] =
+                    await Promise.all([
+                      contract.tokenURI(tokenId),
+                      contract.ownerOf(tokenId),
+                      contract.isRevoked(tokenId),
+                      contract.getExpirationTimestamp(tokenId),
+                    ]);
+
+                  const ipfsHash = metadataURI.replace("ipfs://", "");
+                  const expirationDate = Number(expirationTimestamp);
+                  const isExpired =
+                    expirationDate > 0
+                      ? expirationDate < Math.floor(Date.now() / 1000)
+                      : false;
+
+                  // Fetch metadata
+                  let course = `Certificate ${tokenIdStr}`;
+                  let description = "";
+                  let file: string = "";
+                  try {
+                    const res = await fetch(`https://ipfs.io/ipfs/${ipfsHash}`);
+                    if (res.ok) {
+                      const metadata = await res.json();
+                      course = metadata.name || course;
+                      description = metadata.description || "";
+                      file = metadata.file;
+                    }
+                  } catch (error) {
+                    console.error("Error fetching metadata:", error);
+                  }
+
+                  return {
+                    id: tokenIdStr,
+                    tokenId: tokenIdStr,
+                    holder,
+                    issuer: address || "",
+                    metadataURI,
+                    ipfsHash: file,
+                    issueDate:
+                      expirationDate > 0
+                        ? expirationDate - 31536000
+                        : Math.floor(Date.now() / 1000),
+                    expirationDate,
+                    isRevoked,
+                    isExpired,
+                    course,
+                    description,
+                  };
+                })
+            );
+          }
+
+          const batchResults = await Promise.all(batchPromises);
+          fetchedCertificates.push(...batchResults);
+        }
+
+        setCertificates(fetchedCertificates);
+        setCertificateStats({
+          total: fetchedCertificates.length,
+          active: fetchedCertificates.filter(
+            (c) => !c.isRevoked && !c.isExpired
+          ).length,
+          revoked: fetchedCertificates.filter((c) => c.isRevoked).length,
+          issuedByYou: fetchedCertificates.filter((c) => c.issuer === address)
+            .length,
+        });
+      } catch (error) {
+        console.error("Failed to fetch certificates:", error);
+      } finally {
+        setLoadingCertificates(false);
+      }
+    };
+
+    fetchCertificates();
+  }, [isAuthorized, address]);
 
   useEffect(() => {
     const checkIssuer = async () => {
@@ -419,31 +513,31 @@ export default function AdminDashboard() {
       {/* Main Content - Dashboard Tabs */}
       <main className="relative z-10 p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-md border-white/20 mb-8">
+          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-md border-white/20 mb-8 ">
             <TabsTrigger
               value="dashboard"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer text-gray-400"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Dashboard
             </TabsTrigger>
             <TabsTrigger
               value="certificates"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer text-gray-400"
             >
               <FileText className="h-4 w-4 mr-2" />
               Certificates
             </TabsTrigger>
             <TabsTrigger
               value="users"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer text-gray-400"
             >
               <Users className="h-4 w-4 mr-2" />
               Users
             </TabsTrigger>
             <TabsTrigger
               value="settings"
-              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer text-gray-400"
             >
               <Settings className="h-4 w-4 mr-2" />
               Settings
@@ -456,31 +550,27 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
                 title="Total Certificates"
-                value={dashboardStats.totalCertificates.toLocaleString()}
+                value={certificateStats.total.toLocaleString()}
                 icon={FileText}
-                trend="up"
-                trendValue="+12.5%"
               />
               <StatCard
                 title="Active Certificates"
-                value={dashboardStats.activeCertificates.toLocaleString()}
+                value={certificateStats.active.toLocaleString()}
                 icon={CheckCircle}
               />
               <StatCard
                 title="Revoked Certificates"
-                value={dashboardStats.revokedCertificates}
+                value={certificateStats.revoked}
                 icon={XCircle}
               />
               <StatCard
                 title="Total Users"
-                value={dashboardStats.totalUsers.toLocaleString()}
+                value={certificateStats.issuedByYou.toLocaleString()}
                 icon={Users}
-                trend="up"
-                trendValue="+8.2%"
               />
             </div>
 
-            {/* Recent Activity */}
+            {/* Loading State for certificates */}
             <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-xl">
               <CardHeader>
                 <CardTitle className="text-white flex items-center justify-between">
@@ -496,66 +586,103 @@ export default function AdminDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentCertificates.map((cert) => (
-                    <div
-                      key={cert.id}
-                      className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
+                {loadingCertificates ? (
+                  <div className="flex justify-center items-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  </div>
+                ) : certificates.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white">
+                      No Certificates Yet
+                    </h3>
+                    <p className="text-slate-400 mt-2">
+                      You haven&apos;t issued any certificates yet.
+                    </p>
+                    <Button
+                      className="mt-4 bg-purple-600 hover:bg-purple-700 hover:cursor-pointer"
+                      onClick={() => setIssueCertificateOpen(true)}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <p className="font-mono text-sm text-purple-400">
-                            {cert.id}
-                          </p>
-                          <Badge
-                            variant={
-                              cert.status === "active"
-                                ? "default"
-                                : "destructive"
-                            }
-                            className="text-xs"
-                          >
-                            {cert.status}
-                          </Badge>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Issue Your First Certificate
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {certificates.slice(0, 5).map((cert) => {
+                      const issueDate = new Date(cert.issueDate * 1000)
+                        .toISOString()
+                        .split("T")[0];
+                      const status = cert.isRevoked
+                        ? "revoked"
+                        : cert.expirationDate < Math.floor(Date.now() / 1000)
+                        ? "expired"
+                        : "active";
+
+                      return (
+                        <div
+                          key={cert.id}
+                          className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <p className="font-mono text-sm text-purple-400">
+                                CERT-{cert.id.slice(0, 8)}
+                              </p>
+                              <Badge
+                                variant={
+                                  status === "active"
+                                    ? "default"
+                                    : status === "expired"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
+                                className="text-xs"
+                              >
+                                {status}
+                              </Badge>
+                            </div>
+                            <p className="text-white font-medium mt-1">
+                              {cert.course}
+                            </p>
+                            <p className="text-slate-400 text-sm font-mono">
+                              {cert.holder.slice(0, 6)}...
+                              {cert.holder.slice(-4)}
+                            </p>
+                            <p className="text-slate-500 text-xs mt-1">
+                              Issued: {issueDate}
+                            </p>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-slate-800/95 backdrop-blur-sm border-slate-700">
+                              <DropdownMenuItem
+                                onClick={() => handleViewCertificate(cert)}
+                              >
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleEditCertificate(cert)}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-400"
+                                onClick={() => handleRevokeCertificate(cert)}
+                              >
+                                Revoke
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                        <p className="text-white font-medium mt-1">
-                          {cert.course}
-                        </p>
-                        <p className="text-slate-400 text-sm font-mono">
-                          {cert.holder}
-                        </p>
-                        <p className="text-slate-500 text-xs mt-1">
-                          Issued: {cert.issueDate}
-                        </p>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-slate-800/95 backdrop-blur-sm border-slate-700">
-                          <DropdownMenuItem
-                            onClick={() => handleViewCertificate(cert)}
-                          >
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleEditCertificate(cert)}
-                          >
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-400"
-                            onClick={() => handleRevokeCertificate(cert)}
-                          >
-                            Revoke
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -567,6 +694,7 @@ export default function AdminDashboard() {
                 Certificate Management
               </h2>
               <Button
+                size="sm"
                 className="bg-purple-600 hover:bg-purple-700 hover:cursor-pointer"
                 onClick={() => setIssueCertificateOpen(true)}
               >
@@ -579,83 +707,144 @@ export default function AdminDashboard() {
               <CardHeader>
                 <div className="flex items-center space-x-4">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       placeholder="Search certificates..."
+                      className="pl-10 bg-white/5 border-white/20"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-slate-400"
                     />
                   </div>
-                  <Button
-                    variant="outline"
-                    className="bg-white/5 border-white/20 text-white"
-                  >
-                    Filter
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentCertificates.map((cert) => (
-                    <div
-                      key={cert.id}
-                      className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <p className="font-mono text-sm text-purple-400">
-                            {cert.id}
-                          </p>
-                          <Badge
-                            variant={
-                              cert.status === "active"
-                                ? "default"
-                                : "destructive"
-                            }
-                          >
-                            {cert.status}
-                          </Badge>
+                {loadingCertificates ? (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400" />
+                  </div>
+                ) : certificates.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-white">
+                      No Certificates Found
+                    </h3>
+                    <p className="text-slate-400 mt-2">
+                      {searchQuery
+                        ? "No certificates match your search"
+                        : "You haven't issued any certificates yet"}
+                    </p>
+                    {!searchQuery && (
+                      <Button
+                        className="mt-4 bg-purple-600 hover:bg-purple-700 hover:cursor-pointer"
+                        onClick={() => setIssueCertificateOpen(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Issue Your First Certificate
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {certificates
+                      .filter(
+                        (cert) =>
+                          cert.id
+                            .toLowerCase()
+                            .includes(searchQuery.toLowerCase()) ||
+                          cert.holder
+                            .toLowerCase()
+                            .includes(searchQuery.toLowerCase()) ||
+                          cert.metadataURI
+                            .toLowerCase()
+                            .includes(searchQuery.toLowerCase())
+                      )
+                      .map((cert) => (
+                        <div
+                          key={cert.tokenId}
+                          className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <p className="font-mono text-sm text-purple-400">
+                                CERT-{cert.id.slice(0, 8)}
+                              </p>
+                              <Badge
+                                variant={
+                                  cert.isRevoked
+                                    ? "destructive"
+                                    : cert.isExpired
+                                    ? "secondary"
+                                    : "default"
+                                }
+                              >
+                                {cert.isRevoked
+                                  ? "Revoked"
+                                  : cert.isExpired
+                                  ? "Expired"
+                                  : "Active"}
+                              </Badge>
+                            </div>
+                            <p className="text-white font-medium mt-1">
+                              {cert.course}
+                            </p>
+                            <div className="flex items-center space-x-4 mt-2">
+                              <div>
+                                <p className="text-slate-400 text-xs">Holder</p>
+                                <p className="text-slate-300 text-sm font-mono">
+                                  {cert.holder.slice(0, 6)}...
+                                  {cert.holder.slice(-4)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-slate-400 text-xs">Issued</p>
+                                <p className="text-slate-300 text-sm">
+                                  {new Date(
+                                    cert.issueDate * 1000
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
+                              {cert.expirationDate > 0 && (
+                                <div>
+                                  <p className="text-slate-400 text-xs">
+                                    Expires
+                                  </p>
+                                  <p className="text-slate-300 text-sm">
+                                    {new Date(
+                                      cert.expirationDate * 1000
+                                    ).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-white/5 border-white/20 text-white hover:cursor-pointer"
+                              onClick={() => {
+                                setSelectedCertificate(cert);
+                                setViewCertificateOpen(true);
+                              }}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="hover:cursor-pointer"
+                              onClick={() => {
+                                setSelectedCertificate(cert);
+                                setRevokeCertificateOpen(true);
+                              }}
+                            >
+                              Revoke
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-white font-medium mt-1">
-                          {cert.course}
-                        </p>
-                        <p className="text-slate-400 text-sm font-mono">
-                          {cert.holder}
-                        </p>
-                        <p className="text-slate-500 text-xs mt-1">
-                          Issued: {cert.issueDate}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-white/5 border-white/20 text-white hover:cursor-pointer"
-                          onClick={() => handleViewCertificate(cert)}
-                        >
-                          View
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-white/5 border-white/20 text-white hover:cursor-pointer"
-                          onClick={() => handleEditCertificate(cert)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleRevokeCertificate(cert)}
-                          className="hover:cursor-pointer"
-                        >
-                          Revoke
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
