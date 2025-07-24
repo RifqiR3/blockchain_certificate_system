@@ -8,9 +8,11 @@ export const config = createConfig(
   getDefaultConfig({
     appName: "Blockchain Certificate System",
     chains: [hardhat],
+    ssr: false,
     transports: {
-      [hardhat.id]: http("http://127.0.0.1:8545"), // Explicitly specify Hardhat RPC URL
+      [hardhat.id]: http("http://127.0.0.1:8545"),
     },
-    walletConnectProjectId: "06072025-1b2c-4f3d-8e5a-9f0c1d2e3f4g",
+    walletConnectProjectId:
+      process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID ?? "",
   })
 );

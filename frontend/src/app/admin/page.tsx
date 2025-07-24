@@ -58,6 +58,8 @@ export default function AdminDashboard() {
   const [isAuthorized, setisAuthorized] = useState<boolean>(false);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loadingCertificates, setLoadingCertificates] = useState(false);
+  const shouldShowLoading = address && !isConnected;
+
   const [certificateStats, setCertificateStats] = useState({
     total: 0,
     active: 0,
@@ -274,6 +276,17 @@ export default function AdminDashboard() {
     setSelectedCertificate(cert);
     setRevokeCertificateOpen(true);
   };
+
+  if (shouldShowLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="flex items-center space-x-4 text-white">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          <span>Connecting...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Wallet Not Connected State
   if (!isConnected) {

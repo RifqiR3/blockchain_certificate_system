@@ -69,6 +69,7 @@ export default function RegisterIssuer() {
   const [revokedModalOpen, setRevokeModalOpen] = useState(false);
   const [selectedIssuer, setSelectedIssuer] = useState<Issuer | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
+  const shouldShowLoading = address && !isConnected;
 
   useEffect(() => {
     if (isConnected && isSuperAdmin) {
@@ -114,7 +115,14 @@ export default function RegisterIssuer() {
       setIssuers(fetchedIssuers);
     } catch (error) {
       console.error("Failed to fetch issuers", error);
-      toast.error("Failed to fetch issuers");
+      toast.error("Failed to fetch issuers", {
+        className: "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
     } finally {
       setIsLoadingIssuers(false);
     }
@@ -174,7 +182,14 @@ export default function RegisterIssuer() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error("Please fix the errors in the form");
+      toast.error("Please fix the errors in the form", {
+        className: "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
       return;
     }
 
@@ -192,7 +207,15 @@ export default function RegisterIssuer() {
       const tx = await contract.registerIssuer(formData.address, formData.name);
       await tx.wait();
 
-      toast.success("Issuer registered successfully");
+      toast.success("Issuer registered successfully", {
+        className:
+          "!bg-green-600/40 !text-green-300 !border !border-green-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
 
       // Reset form
       setFormData({
@@ -202,7 +225,14 @@ export default function RegisterIssuer() {
     } catch (error) {
       console.error("Failed to register issuer", error);
       const errorMessage = parseEthereumError(error);
-      toast.error(`Failed to register issuer: ${errorMessage}`);
+      toast.error(`Failed to register issuer: ${errorMessage}`, {
+        className: "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -236,7 +266,14 @@ export default function RegisterIssuer() {
       setSelectedIssuer(null);
     } catch (error) {
       console.error("Failed to revoke issuer", error);
-      toast.error("Failed to revoke issuer. Please try again");
+      toast.error("Failed to revoke issuer. Please try again", {
+        className: "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -258,6 +295,17 @@ export default function RegisterIssuer() {
       </Badge>
     );
   };
+
+  if (shouldShowLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="flex items-center space-x-4 text-white">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          <span>Connecting...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Wallet Not Connected State
   if (!isConnected) {
@@ -509,14 +557,14 @@ export default function RegisterIssuer() {
             <TabsList className="grid w-full grid-cols-2 bg-white/10 backdrop-blur-md border-white/20 mb-8">
               <TabsTrigger
                 value="register"
-                className="data-[state=active]:bg-orange-600 data-[state=active]:text-white hover:cursor-pointer"
+                className="data-[state=active]:bg-orange-600 data-[state=active]:text-white hover:cursor-pointer text-slate-300"
               >
                 <Building2 className="h-4 w-4 mr-2" />
                 Register Issuer
               </TabsTrigger>
               <TabsTrigger
                 value="manage"
-                className="data-[state=active]:bg-orange-600 data-[state=active]:text-white hover:cursor-pointer"
+                className="data-[state=active]:bg-orange-600 data-[state=active]:text-white hover:cursor-pointer text-slate-300"
               >
                 <Shield className="h-4 w-4 mr-2" />
                 Manage Issuers

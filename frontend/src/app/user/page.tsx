@@ -33,7 +33,6 @@ import { Toaster } from "sonner";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
 
-// Mock certificate data - in real app, this would come from blockchain
 // const mockCertificates = [
 //   {
 //     tokenId: "1",
@@ -90,6 +89,7 @@ export default function StudentDashboard() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const shouldShowLoading = address && !isConnected;
 
   const filteredCertificates = certificates.filter((certificate) => {
     if (!searchQuery.trim()) return true;
@@ -246,6 +246,17 @@ export default function StudentDashboard() {
     }
   };
 
+  if (shouldShowLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="flex items-center space-x-4 text-white">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          <span>Connecting...</span>
+        </div>
+      </div>
+    );
+  }
+
   // Wallet Not Connected State
   if (!isConnected) {
     return (
@@ -354,7 +365,7 @@ export default function StudentDashboard() {
             </Card>
 
             {/* Features Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center mb-5">
               <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
                 <FileText className="h-8 w-8 text-purple-400 mx-auto mb-2" />
                 <h3 className="text-white font-semibold mb-1">
