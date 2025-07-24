@@ -3,25 +3,10 @@
 import type React from "react";
 
 import { useState } from "react";
-import {
-  Search,
-  Shield,
-  CheckCircle,
-  AlertCircle,
-  User,
-  Wallet,
-} from "lucide-react";
+import { Search, Shield, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ConnectKitButton } from "connectkit";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
 
@@ -47,16 +32,20 @@ export default function CertificateVerification() {
   const [certificateData, setCertificateData] =
     useState<CertificateData | null>(null);
 
+  const getProvider = () => {
+    return new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+  };
+
   const handleVerification = async () => {
     setVerificationStatus("loading");
     setCertificateData(null);
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
+    const provider = getProvider();
+    // const signer = await provider.getSigner();
     const contract = new ethers.Contract(
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
       CertificateNFT.abi,
-      signer
+      provider
     );
 
     const input = certificateInput.trim();
@@ -182,49 +171,11 @@ export default function CertificateVerification() {
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
 
       {/* Header */}
-      <header className="relative z-10 flex justify-between items-center p-6">
+      <header className="relative z-10 flex justify-between items-center p-6 mb-7">
         <div className="flex items-center space-x-3">
           <Shield className="h-8 w-8 text-purple-400" />
           <h1 className="text-2xl font-bold text-white">SealChain</h1>
         </div>
-
-        {/* Profile Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-12 w-12 rounded-full">
-              <Avatar className="h-12 w-12 border-2 border-purple-400/50 hover:border-purple-400 transition-colors">
-                <AvatarImage
-                  src="/placeholder.svg?height=48&width=48"
-                  alt="Profile"
-                />
-                <AvatarFallback className="bg-purple-600 text-white">
-                  <User className="h-6 w-6" />
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="bg-slate-800/95 backdrop-blur-sm border-slate-700"
-            align="end"
-          >
-            <DropdownMenuItem className="p-0">
-              <ConnectKitButton.Custom>
-                {({ show }) => {
-                  return (
-                    <Button
-                      onClick={show}
-                      variant="outline"
-                      className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 text-white hover:text-black hover:cursor-pointer"
-                    >
-                      <Wallet className="h-4 w-4" />
-                      <span>Connect Wallet</span>
-                    </Button>
-                  );
-                }}
-              </ConnectKitButton.Custom>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </header>
 
       {/* Main Content */}
@@ -263,7 +214,7 @@ export default function CertificateVerification() {
                   disabled={
                     !certificateInput.trim() || verificationStatus === "loading"
                   }
-                  className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover:cursor-pointer text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   {verificationStatus === "loading" ? (
                     <div className="flex items-center space-x-2">
