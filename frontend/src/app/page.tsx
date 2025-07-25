@@ -549,6 +549,22 @@ export default function CertificateVerification() {
                     </h3>
                   </div>
 
+                  {/* Warning Badge for URI-only verification */}
+                  {certificateData?.tokenId === "-" && (
+                    <div className="mb-6 p-3 bg-yellow-900/20 border border-yellow-400/30 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="h-4 w-4 text-yellow-400" />
+                        <span className="text-yellow-300 text-sm font-medium">
+                          ⚠️ URI-only verification — not matched on-chain
+                        </span>
+                      </div>
+                      <p className="text-yellow-200/80 text-xs mt-1 ml-6">
+                        This certificate was verified using metadata only. For
+                        full blockchain verification, use the token ID.
+                      </p>
+                    </div>
+                  )}
+
                   {verificationStatus === "valid" && certificateData && (
                     <div className="space-y-4 text-slate-300">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -583,19 +599,20 @@ export default function CertificateVerification() {
                           <p>{certificateData.expiryDate}</p>
                         </div>
                       </div>
-                      {certificateData.imageUrl && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-4 w-full text-black hover:cursor-pointer"
-                          onClick={() =>
-                            window.open(certificateData.imageUrl, "_blank")
-                          }
-                        >
-                          <Eye className="h-4 w-full mr-2" />
-                          View Document
-                        </Button>
-                      )}
+                      {certificateData.imageUrl &&
+                        certificateData?.tokenId !== "-" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4 w-full text-black hover:cursor-pointer"
+                            onClick={() =>
+                              window.open(certificateData.imageUrl, "_blank")
+                            }
+                          >
+                            <Eye className="h-4 w-full mr-2" />
+                            View Document
+                          </Button>
+                        )}
                     </div>
                   )}
 
