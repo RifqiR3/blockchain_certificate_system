@@ -395,6 +395,8 @@ export default function StudentDashboard() {
               </div>
             </div>
           </div>
+
+          <Toaster position="top-right" />
         </main>
       </div>
     );
@@ -681,6 +683,12 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">TokenID:</span>
+                            <span className="text-white">
+                              {certificate.tokenId}
+                            </span>
+                          </div>
                           <div className="flex justify-between">
                             <span className="text-slate-400">Issuer:</span>
                             <span className="text-white">

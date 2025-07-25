@@ -166,7 +166,15 @@ export function CertificateModals({
 
         await tx.wait();
 
-        alert("✅ Certificate minted successfully!");
+        toast.success("Certificate minted successfully!", {
+          className:
+            "!bg-green-600/40 !text-green-300 !border !border-green-400/30",
+          style: {
+            backgroundColor: "transparent",
+            color: "inherit",
+            border: "none",
+          },
+        });
         setIssueCertificateOpen(false);
       } catch (err) {
         console.error("❌ Minting failed:", err);
@@ -626,7 +634,15 @@ export function CertificateModals({
 
         setRevokeCertificateOpen(false);
 
-        toast.success("Certificate revoked successfully");
+        toast.success("Certificate revoked successfully", {
+          className:
+            "!bg-green-600/40 !text-green-300 !border !border-green-400/30",
+          style: {
+            backgroundColor: "transparent",
+            color: "inherit",
+            border: "none",
+          },
+        });
       } catch (error) {
         console.error("Revocation failed:", error);
         alert(

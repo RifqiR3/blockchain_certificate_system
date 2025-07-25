@@ -33,6 +33,7 @@ import { ConnectKitButton } from "connectkit";
 import { CertificateModals } from "../../components/certificate-modals";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
+import { Toaster, toast } from "sonner";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 
@@ -526,7 +527,7 @@ export default function AdminDashboard() {
       {/* Main Content - Dashboard Tabs */}
       <main className="relative z-10 p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-md border-white/20 mb-8 ">
+          <TabsList className="grid w-full grid-cols-2 bg-white/10 backdrop-blur-md border-white/20 mb-8 ">
             <TabsTrigger
               value="dashboard"
               className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer text-gray-400"
@@ -541,7 +542,7 @@ export default function AdminDashboard() {
               <FileText className="h-4 w-4 mr-2" />
               Certificates
             </TabsTrigger>
-            <TabsTrigger
+            {/* <TabsTrigger
               value="users"
               className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:cursor-pointer text-gray-400"
             >
@@ -554,7 +555,7 @@ export default function AdminDashboard() {
             >
               <Settings className="h-4 w-4 mr-2" />
               Settings
-            </TabsTrigger>
+            </TabsTrigger> */}
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -869,7 +870,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Users Tab */}
-          <TabsContent value="users" className="space-y-6">
+          {/* <TabsContent value="users" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-white">User Management</h2>
               <Button className="bg-purple-600 hover:bg-purple-700">
@@ -891,10 +892,10 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
 
           {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
+          {/* <TabsContent value="settings" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-white">System Settings</h2>
             </div>
@@ -913,8 +914,10 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
+
+        <Toaster position="top-right" />
       </main>
       <CertificateModals
         issueCertificateOpen={issueCertificateOpen}

@@ -259,7 +259,15 @@ export default function RegisterIssuer() {
       const tx = await contract.revokeIssuer(selectedIssuer.address);
       await tx.wait();
 
-      toast.success(`${selectedIssuer.name} has been revoked successfully`);
+      toast.success(`${selectedIssuer.name} has been revoked successfully`, {
+        className:
+          "!bg-green-600/40 !text-green-300 !border !border-green-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
       fetchIssuers();
       setRevokeModalOpen(false);
       setRevokeReason("");
