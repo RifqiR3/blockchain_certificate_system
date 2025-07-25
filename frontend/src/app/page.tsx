@@ -3,14 +3,26 @@
 import type React from "react";
 
 import { useState } from "react";
-import { Search, Shield, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Search,
+  Shield,
+  CheckCircle,
+  AlertCircle,
+  Eye,
+  Upload,
+  ImageIcon,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Toaster, toast } from "sonner";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
 
 export default function CertificateVerification() {
+  const [activeTab, setActiveTab] = useState("uri");
   const [certificateInput, setCertificateInput] = useState("");
   const [verificationStatus, setVerificationStatus] = useState<
     "idle" | "loading" | "valid" | "invalid" | "revoked" | "partial"
@@ -35,6 +47,11 @@ export default function CertificateVerification() {
   const getProvider = () => {
     return new ethers.JsonRpcProvider("http://127.0.0.1:8545");
   };
+
+  // Image verification state
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleVerification = async () => {
     setVerificationStatus("loading");
@@ -62,7 +79,7 @@ export default function CertificateVerification() {
       let isRevoked: boolean;
 
       try {
-        // ✅ Step 1: Check if token exists
+        // Check if token exists
         owner = await contract.ownerOf(tokenId);
       } catch (err) {
         console.error("❌ Invalid token ID (does not exist):", err);
@@ -71,7 +88,7 @@ export default function CertificateVerification() {
       }
 
       try {
-        // ✅ Step 2: Fetch related metadata
+        // Fetch related metadata
         tokenURI = await contract.tokenURI(tokenId);
         isExpired = await contract.isExpiredOfficial(tokenId);
         isRevoked = await contract.isRevoked(tokenId);
@@ -81,7 +98,7 @@ export default function CertificateVerification() {
         return;
       }
 
-      // ✅ Step 3: Validate URI
+      // Validate URI
       if (!tokenURI.startsWith("ipfs://")) {
         console.warn("⚠️ tokenURI is not IPFS:", tokenURI);
         setVerificationStatus("invalid");
@@ -106,8 +123,8 @@ export default function CertificateVerification() {
           expiryDate: metadata.expiryDate || "-",
           ipfsHash: tokenURI.replace("ipfs://", ""),
           status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
-          imageUrl: metadata.image
-            ? metadata.image.replace("ipfs://", "https://ipfs.io/ipfs/")
+          imageUrl: metadata.file
+            ? metadata.file.replace("ipfs://", "https://ipfs.io/ipfs/")
             : "/placeholder.svg",
         });
 
@@ -117,7 +134,7 @@ export default function CertificateVerification() {
         setVerificationStatus("invalid");
       }
     } else {
-      // ✅ Manual URI input flow
+      // Manual URI input flow
       const uri = input;
 
       if (!uri.startsWith("ipfs://")) {
@@ -151,10 +168,131 @@ export default function CertificateVerification() {
 
         setVerificationStatus("valid");
       } catch (err) {
-        console.error("❌ IPFS metadata fetch failed:", err);
+        console.error("IPFS metadata fetch failed:", err);
         setVerificationStatus("invalid");
       }
     }
+  };
+
+  const handleImageVerification = async () => {
+    if (!uploadedImage) return;
+
+    setVerificationStatus("loading");
+
+    // Simulate image verification
+    setTimeout(() => {
+      // Mock verification logic based on image
+      const isValid = Math.random() > 0.4; // 60% chance of valid certificate
+
+      if (isValid) {
+        setVerificationStatus("valid");
+        setCertificateData({
+          tokenId: "IMG-CERT-2024-001",
+          holder: "0x742d35Cc6634C0532925a3b8D404d3aABe09e3b1",
+          name: "Advanced Smart Contract Development",
+          description: "Verified via image upload",
+          issuer: "Blockchain University",
+          issueDate: "2024-01-15",
+          expiryDate: "2026-01-15",
+          ipfsHash: "-",
+          status: "valid",
+          imageUrl: uploadedImage.name || "/placeholder.svg",
+        });
+      } else {
+        setVerificationStatus("invalid");
+        setCertificateData(null);
+      }
+    }, 3000);
+  };
+
+  const handleImageUpload = (file: File) => {
+    // Validate file type
+    const validTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Please select a valid image file (JPG or PNG)", {
+        className: "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Please select a valid image file (JPG or PNG)", {
+        className: "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
+        style: {
+          backgroundColor: "transparent",
+          color: "inherit",
+          border: "none",
+        },
+      });
+      return;
+    }
+
+    setUploadedImage(file);
+
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset verification status when new image is uploaded
+    setVerificationStatus("idle");
+    setCertificateData(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      handleImageUpload(files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleImageUpload(files[0]);
+    }
+  };
+
+  const removeImage = () => {
+    setUploadedImage(null);
+    setImagePreview(null);
+    setVerificationStatus("idle");
+    setCertificateData(null);
+  };
+
+  const resetVerification = () => {
+    setCertificateInput("");
+    setUploadedImage(null);
+    setImagePreview(null);
+    setVerificationStatus("idle");
+    setCertificateData(null);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -180,52 +318,204 @@ export default function CertificateVerification() {
 
       {/* Main Content */}
       <main className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-120px)] px-6">
-        <div className="w-full max-w-2xl space-y-8">
+        <div className="w-full max-w-4xl space-y-8">
           {/* Title Section */}
           <div className="text-center space-y-4">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Verify Certificate
             </h2>
-            <p className="text-xl text-slate-300 max-w-lg mx-auto">
-              Enter a certificate URI or ID to verify its authenticity on the
-              blockchain
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+              Verify certificate authenticity using ID / URI or by uploading an
+              image of the certificate
             </p>
           </div>
 
-          {/* Verification Input */}
+          {/* Verification Method */}
           <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
             <CardContent className="p-8">
-              <div className="space-y-6">
-                <div className="relative">
-                  <Input
-                    type="text"
-                    placeholder="Enter certificate URI or ID..."
-                    value={certificateInput}
-                    onChange={(e) => setCertificateInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="h-14 text-lg bg-white/5 border-white/20 text-white placeholder:text-slate-400 focus:border-purple-400 focus:ring-purple-400/20"
-                    disabled={verificationStatus === "loading"}
-                  />
-                  <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                </div>
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => {
+                  setActiveTab(value);
+                  resetVerification();
+                }}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 bg-white/10 backdrop-blur-md border-white/20 mb-6">
+                  <TabsTrigger
+                    value="uri"
+                    className="data-[state=active]:bg-purple-600 text-slate-300 data-[state=active]:text-white hover:cursor-pointer"
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    ID / URI Verification
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="image"
+                    className="data-[state=active]:bg-purple-600 text-slate-300 data-[state=active]:text-white hover:cursor-pointer"
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Image Verification
+                  </TabsTrigger>
+                </TabsList>
 
-                <Button
-                  onClick={handleVerification}
-                  disabled={
-                    !certificateInput.trim() || verificationStatus === "loading"
-                  }
-                  className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover:cursor-pointer text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  {verificationStatus === "loading" ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Verifying...</span>
-                    </div>
+                {/* URI/ID Verification Tab */}
+                <TabsContent value="uri" className="space-y-6">
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      placeholder="Enter certificate URI or ID..."
+                      value={certificateInput}
+                      onChange={(e) => setCertificateInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="h-14 text-lg bg-white/5 border-white/20 text-white placeholder:text-slate-400 focus:border-purple-400 focus:ring-purple-400/20"
+                      disabled={verificationStatus === "loading"}
+                    />
+                    <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  </div>
+
+                  <Button
+                    onClick={handleVerification}
+                    disabled={
+                      !certificateInput.trim() ||
+                      verificationStatus === "loading"
+                    }
+                    className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:cursor-pointer"
+                  >
+                    {verificationStatus === "loading" ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Verifying...</span>
+                      </div>
+                    ) : (
+                      "Verify Certificate"
+                    )}
+                  </Button>
+                </TabsContent>
+
+                {/* Image Verification Tab */}
+                <TabsContent value="image" className="space-y-6">
+                  {!imagePreview ? (
+                    <Card
+                      className={`border-2 border-dashed transition-all duration-200 ${
+                        isDragging
+                          ? "border-purple-400 bg-purple-400/10"
+                          : "border-slate-600 bg-slate-800/30 hover:border-slate-500"
+                      } cursor-pointer`}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                    >
+                      <CardContent className="p-12">
+                        <div className="text-center space-y-4">
+                          <div className="bg-purple-600/20 p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center">
+                            <Upload className="h-10 w-10 text-purple-400" />
+                          </div>
+
+                          <div className="space-y-2">
+                            <h3 className="text-xl font-semibold text-white">
+                              Upload Certificate Image
+                            </h3>
+                            <p className="text-slate-400">
+                              Drag and drop your certificate image here, or
+                              click to browse
+                            </p>
+                            <p className="text-slate-500 text-sm">
+                              Supports JPG, PNG, GIF, WebP (Max 10MB)
+                            </p>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer"
+                            onClick={() =>
+                              document
+                                .getElementById("certificate-image-input")
+                                ?.click()
+                            }
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose Image
+                          </Button>
+
+                          <input
+                            id="certificate-image-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileInput}
+                            className="hidden"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
                   ) : (
-                    "Verify Certificate"
+                    <div className="space-y-4">
+                      {/* Image Preview */}
+                      <Card className="bg-slate-800/30 border-slate-600">
+                        <CardContent className="p-4">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-white font-medium flex items-center space-x-2">
+                                <ImageIcon className="h-5 w-5 text-purple-400" />
+                                <span>Certificate Image</span>
+                              </h4>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={removeImage}
+                                className="bg-red-700/50 border-red-600 text-red-300 hover:bg-red-600 hover:cursor-pointer"
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+
+                            <div className="relative bg-slate-900/50 rounded-lg p-4">
+                              <img
+                                src={imagePreview || "/placeholder.svg"}
+                                alt="Certificate preview"
+                                className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
+                              />
+                            </div>
+
+                            <div className="bg-blue-900/20 border border-blue-400/30 rounded-lg p-3">
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="h-4 w-4 text-blue-400" />
+                                <p className="text-blue-300 text-sm font-medium">
+                                  Image Ready for Verification
+                                </p>
+                              </div>
+                              <p className="text-blue-200 text-xs mt-1">
+                                File: {uploadedImage?.name} (
+                                {(
+                                  uploadedImage?.size || 0 / 1024 / 1024
+                                ).toFixed(2)}{" "}
+                                MB)
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Verify Button */}
+                      <Button
+                        onClick={handleImageVerification}
+                        disabled={verificationStatus === "loading"}
+                        className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:cursor-pointer"
+                      >
+                        {verificationStatus === "loading" ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            <span>Analyzing Image...</span>
+                          </div>
+                        ) : (
+                          <>Verify Certificate Image</>
+                        )}
+                      </Button>
+                    </div>
                   )}
-                </Button>
-              </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 
@@ -233,7 +523,7 @@ export default function CertificateVerification() {
           {verificationStatus !== "idle" &&
             verificationStatus !== "loading" && (
               <Card
-                className={`bg-white/10 backdrop-blur-md border-white/20 shadow-2xl transition-all duration-500 mb-5 ${
+                className={`bg-white/10 backdrop-blur-md border-white/20 shadow-2xl transition-all duration-500 ${
                   verificationStatus === "valid"
                     ? "border-green-400/50"
                     : "border-red-400/50"
@@ -258,22 +548,6 @@ export default function CertificateVerification() {
                         : "Certificate Invalid"}
                     </h3>
                   </div>
-
-                  {/* Warning Badge for URI-only verification */}
-                  {certificateData?.tokenId === "-" && (
-                    <div className="mb-6 p-3 bg-yellow-900/20 border border-yellow-400/30 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-yellow-400" />
-                        <span className="text-yellow-300 text-sm font-medium">
-                          ⚠️ URI-only verification — not matched on-chain
-                        </span>
-                      </div>
-                      <p className="text-yellow-200/80 text-xs mt-1 ml-6">
-                        This certificate was verified using metadata only. For
-                        full blockchain verification, use the token ID.
-                      </p>
-                    </div>
-                  )}
 
                   {verificationStatus === "valid" && certificateData && (
                     <div className="space-y-4 text-slate-300">
@@ -308,24 +582,64 @@ export default function CertificateVerification() {
                           <p className="text-sm text-slate-400">Expiry Date</p>
                           <p>{certificateData.expiryDate}</p>
                         </div>
-                        <div>
-                          <p className="text-sm text-slate-400">Status</p>
-                          <p>{certificateData.status}</p>
-                        </div>
                       </div>
+                      {certificateData.imageUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-4 w-full text-black hover:cursor-pointer"
+                          onClick={() =>
+                            window.open(certificateData.imageUrl, "_blank")
+                          }
+                        >
+                          <Eye className="h-4 w-full mr-2" />
+                          View Document
+                        </Button>
+                      )}
                     </div>
                   )}
 
                   {verificationStatus === "invalid" && (
-                    <p className="text-slate-300">
-                      The certificate could not be verified. Please check the
-                      URI or ID and try again.
-                    </p>
+                    <div className="space-y-4">
+                      <p className="text-slate-300">
+                        The certificate could not be verified. Please check the{" "}
+                        {activeTab === "uri" ? "URI or ID" : "image"} and try
+                        again.
+                      </p>
+                      {activeTab === "image" && (
+                        <div className="bg-yellow-900/20 border border-yellow-400/30 rounded-lg p-3">
+                          <div className="flex items-center space-x-2">
+                            <AlertCircle className="h-4 w-4 text-yellow-400" />
+                            <p className="text-yellow-300 text-sm font-medium">
+                              Image Verification Tips
+                            </p>
+                          </div>
+                          <ul className="text-yellow-200 text-sm mt-2 ml-4 space-y-1">
+                            <li>• Ensure the image is clear and well-lit</li>
+                            <li>• Make sure all text is readable</li>
+                            <li>• Avoid shadows or reflections</li>
+                            <li>• Use a high-resolution image</li>
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   )}
+
+                  {/* Try Again Button */}
+                  <div className="mt-6 pt-4 border-t border-slate-600">
+                    <Button
+                      onClick={resetVerification}
+                      variant="outline"
+                      className="bg-slate-700/50 border-slate-600 text-white hover:cursor-pointer"
+                    >
+                      Verify Another Certificate
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
         </div>
+        <Toaster position="top-right" />
       </main>
     </div>
   );

@@ -8,7 +8,6 @@ import {
   BarChart3,
   FileText,
   Users,
-  Settings,
   Plus,
   Search,
   MoreHorizontal,
@@ -33,7 +32,6 @@ import { ConnectKitButton } from "connectkit";
 import { CertificateModals } from "../../components/certificate-modals";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
-import { Toaster, toast } from "sonner";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 
@@ -916,8 +914,6 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent> */}
         </Tabs>
-
-        <Toaster position="top-right" />
       </main>
       <CertificateModals
         issueCertificateOpen={issueCertificateOpen}

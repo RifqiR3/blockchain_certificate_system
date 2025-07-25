@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { FileText, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { FileText, AlertTriangle, XCircle } from "lucide-react";
 import { CertificateFilePreview } from "./certificate-file-preview";
 import { CertificateFileUpload } from "./certificate-file-upload";
 import { ethers } from "ethers";
@@ -438,7 +438,7 @@ export function CertificateModals({
                 <div className="md:col-span-2">
                   <p className="text-slate-400">Metadata URI</p>
                   <p className="font-mono text-blue-400 break-all text-xs">
-                    {selectedCertificate.metadataURI}
+                    {selectedCertificate.ipfsHash}
                   </p>
                 </div>
               </div>
