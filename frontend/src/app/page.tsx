@@ -174,48 +174,104 @@ export default function CertificateVerification() {
     }
   };
 
-  const handleImageVerification = async () => {
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashArray = Array.from(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", buffer))
+    );
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  };
+
+  const verifyCertificateByFile = async (file: File) => {
+    try {
+      // Compute file hash
+      const fileHash = await calculateFileHash(file);
+
+      // Call smart contract
+      const provider = getProvider();
+      const contract = new ethers.Contract(
+        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+        CertificateNFT.abi,
+        provider
+      );
+      const [isValid, tokenId, owner] = await contract.verifyByHash(
+        "0x" + fileHash
+      );
+
+      if (!isValid) {
+        return { valid: false };
+      }
+
+      // Fetch metada from IPFS
+      const metadataURI = await contract.tokenURI(tokenId);
+      const metadataRes = await fetch(
+        metadataURI.replace("ipfs://", "https://ipfs.io/ipfs/")
+      );
+      const metadata = await metadataRes.json();
+
+      if (metadata.fileHash) {
+        const storedHash = metadata.fileHash.replace("sha256:", "");
+        if (storedHash !== fileHash) {
+          console.warn("File hash mismatch");
+          return { valid: false };
+        }
+      }
+
+      return {
+        valid: true,
+        tokenId: tokenId.toString(),
+        holder: owner,
+        name: metadata.name,
+        description: metadata.description,
+        issuer: metadata.issuer,
+        issueDate: metadata.issueDate,
+        expiryDate: metadata.expiryDate,
+        ipfsHash: metadataURI,
+        imageUrl: metadata.file.replace("ipfs://", "https://ipfs.io/ipfs/"),
+      };
+    } catch (error) {
+      console.error("Verification failed:", error);
+      return { valid: false };
+    }
+  };
+
+  const handleFileVerification = async () => {
     if (!uploadedImage) return;
 
     setVerificationStatus("loading");
 
-    // Simulate image verification
-    setTimeout(() => {
-      // Mock verification logic based on image
-      const isValid = Math.random() > 0.4; // 60% chance of valid certificate
+    const result = await verifyCertificateByFile(uploadedImage);
 
-      if (isValid) {
-        setVerificationStatus("valid");
-        setCertificateData({
-          tokenId: "IMG-CERT-2024-001",
-          holder: "0x742d35Cc6634C0532925a3b8D404d3aABe09e3b1",
-          name: "Advanced Smart Contract Development",
-          description: "Verified via image upload",
-          issuer: "Blockchain University",
-          issueDate: "2024-01-15",
-          expiryDate: "2026-01-15",
-          ipfsHash: "-",
-          status: "valid",
-          imageUrl: uploadedImage.name || "/placeholder.svg",
-        });
-      } else {
-        setVerificationStatus("invalid");
-        setCertificateData(null);
-      }
-    }, 3000);
+    if (result.valid) {
+      setVerificationStatus("valid");
+      setCertificateData({
+        tokenId: result.tokenId,
+        holder: result.holder,
+        name: result.name,
+        description: result.description,
+        issuer: result.issuer,
+        issueDate: result.issueDate,
+        expiryDate: result.expiryDate,
+        ipfsHash: result.ipfsHash,
+        status: "valid",
+        imageUrl: result.imageUrl,
+      });
+    } else {
+      setVerificationStatus("invalid");
+      setCertificateData(null);
+    }
   };
 
-  const handleImageUpload = (file: File) => {
+  const handleFileUpload = (file: File) => {
     // Validate file type
     const validTypes = [
-      "image/jpeg",
       "image/jpg",
+      "image/jpeg",
       "image/png",
-      "image/gif",
-      "image/webp",
+      "application/pdf",
     ];
     if (!validTypes.includes(file.type)) {
-      toast.error("Please select a valid image file (JPG or PNG)", {
+      toast.error("Please select a valid JPG, PNG, or PDF file only", {
         className: "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
         style: {
           backgroundColor: "transparent",
@@ -259,7 +315,7 @@ export default function CertificateVerification() {
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      handleImageUpload(files[0]);
+      handleFileUpload(files[0]);
     }
   };
 
@@ -276,7 +332,7 @@ export default function CertificateVerification() {
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      handleImageUpload(files[0]);
+      handleFileUpload(files[0]);
     }
   };
 
@@ -325,8 +381,8 @@ export default function CertificateVerification() {
               Verify Certificate
             </h2>
             <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-              Verify certificate authenticity using ID / URI or by uploading an
-              image of the certificate
+              Verify certificate authenticity using ID / URI or by uploading a
+              certificate file (JPG, PNG, or PDF)
             </p>
           </div>
 
@@ -354,7 +410,7 @@ export default function CertificateVerification() {
                     className="data-[state=active]:bg-purple-600 text-slate-300 data-[state=active]:text-white hover:cursor-pointer"
                   >
                     <ImageIcon className="h-4 w-4 mr-2" />
-                    Image Verification
+                    File Verification
                   </TabsTrigger>
                 </TabsList>
 
@@ -413,14 +469,14 @@ export default function CertificateVerification() {
 
                           <div className="space-y-2">
                             <h3 className="text-xl font-semibold text-white">
-                              Upload Certificate Image
+                              Upload Certificate File
                             </h3>
                             <p className="text-slate-400">
-                              Drag and drop your certificate image here, or
-                              click to browse
+                              Drag and drop your certificate file here, or click
+                              to browse
                             </p>
                             <p className="text-slate-500 text-sm">
-                              Supports JPG, PNG, GIF, WebP (Max 10MB)
+                              Supports JPG, PNG, or PDF files only (Max 10MB)
                             </p>
                           </div>
 
@@ -441,7 +497,7 @@ export default function CertificateVerification() {
                           <input
                             id="certificate-image-input"
                             type="file"
-                            accept="image/*"
+                            accept=".jpg,.png,.pdf"
                             onChange={handleFileInput}
                             className="hidden"
                           />
@@ -457,7 +513,7 @@ export default function CertificateVerification() {
                             <div className="flex items-center justify-between">
                               <h4 className="text-white font-medium flex items-center space-x-2">
                                 <ImageIcon className="h-5 w-5 text-purple-400" />
-                                <span>Certificate Image</span>
+                                <span>Certificate File</span>
                               </h4>
                               <Button
                                 variant="outline"
@@ -482,7 +538,7 @@ export default function CertificateVerification() {
                               <div className="flex items-center space-x-2">
                                 <CheckCircle className="h-4 w-4 text-blue-400" />
                                 <p className="text-blue-300 text-sm font-medium">
-                                  Image Ready for Verification
+                                  File Ready for Verification
                                 </p>
                               </div>
                               <p className="text-blue-200 text-xs mt-1">
@@ -499,17 +555,17 @@ export default function CertificateVerification() {
 
                       {/* Verify Button */}
                       <Button
-                        onClick={handleImageVerification}
+                        onClick={handleFileVerification}
                         disabled={verificationStatus === "loading"}
                         className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:cursor-pointer"
                       >
                         {verificationStatus === "loading" ? (
                           <div className="flex items-center space-x-2">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                            <span>Analyzing Image...</span>
+                            <span>Analyzing File...</span>
                           </div>
                         ) : (
-                          <>Verify Certificate Image</>
+                          <>Verify Certificate File</>
                         )}
                       </Button>
                     </div>

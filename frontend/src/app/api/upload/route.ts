@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const apiSecret = process.env.PINATA_API_SECRET;
 
   try {
-    // 1. Upload certificate file
+    // Upload certificate file
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const fileForm = new FormData();
     fileForm.append("file", new Blob([fileBuffer]), file.name);
@@ -31,17 +31,25 @@ export async function POST(req: NextRequest) {
       fileForm,
       {
         headers: {
-          // Do not manually set Content-Type; let axios and FormData handle it
           pinata_api_key: apiKey,
           pinata_secret_api_key: apiSecret,
         },
       }
     );
 
-    const fileHash = fileRes.data.IpfsHash;
-    const fileIpfsUri = `ipfs://${fileHash}`;
+    const hashArray = Array.from(
+      new Uint8Array(
+        await crypto.subtle.digest("SHA-256", await file.arrayBuffer())
+      )
+    );
+    const fileHash = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
-    // 2. Create metadata
+    const fileIpfsHash = fileRes.data.IpfsHash;
+    const fileIpfsUri = `ipfs://${fileIpfsHash}`;
+
+    // Create metadata
     const metadata = {
       name,
       description,
@@ -49,6 +57,7 @@ export async function POST(req: NextRequest) {
       issueDate,
       expiryDate,
       file: fileIpfsUri,
+      fileHash: `sha256:${fileHash}`,
       attributes: [
         { trait_type: "Issuer", value: issuer },
         { trait_type: "Issue Date", value: issueDate },
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
     );
 
     const metadataUri = `ipfs://${jsonRes.data.IpfsHash}`;
-    return NextResponse.json({ metadataUri });
+    return NextResponse.json({ metadataUri, fileHash });
   } catch (err) {
     console.error("Pinata upload error:", err);
     return NextResponse.json(

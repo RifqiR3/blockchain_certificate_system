@@ -6,30 +6,23 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 
 contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterface {
-    // Store active certificates (Simple Token List for now)
-    uint256[] private _activeCertificates;
+    // CERTIFICATE TRACKING
+    uint256[] private _activeCertificates; // Store active certificates
+    uint256 private _scanIndex; // Store scan index for automation. This index is used to track the next certificate to be scanned for expiration
+    uint256 private _tokenIds; // Track latest minted token ID
 
-    // Store scan index for automation
-    // This index is used to track the next certificate to be scanned for expiration
-    uint256 private _scanIndex;
+    // FILE HASH VERIFICATION
+    mapping(bytes32 => uint256) public fileHashToTokenId; // File hash -> TokenID
+    mapping(uint256 => bytes32) public tokenIdToFileHash; // TokenID -> File Hash
 
-    // Track latest minted token ID
-    uint256 private _tokenIds;
+    // ISSUER MANAGEMENT 
+    mapping (address => bool) public isRegisteredIssuer; // Mapping to check if an address is a registered issuer 
+    mapping (address => string) public issuerNames; // Mapping from issuer address to issuer name
 
-    // Mapping to check if an address is a registered issuer
-    mapping (address => bool) public isRegisteredIssuer;
-
-    // Mapping from issuer address to issuer name
-    mapping (address => string) public issuerNames;
-
-    // Store certificate revocation status
-    mapping(uint256 => bool) private _revoked;
-
-    // Store expiration timestamps and status
-    mapping(uint256 => uint256) private _expirationTimestamps;
-
-    // Store expired status
-    mapping(uint256 => bool) private _expired;
+    // CERTIFICATE STATUS
+    mapping(uint256 => bool) private _revoked; // Store certificate revocation status
+    mapping(uint256 => uint256) private _expirationTimestamps; // Store expiration timestamps and status
+    mapping(uint256 => bool) private _expired; // Store expired status
 
     constructor() ERC721("CertificateNFT", "CERT") Ownable() {}
 
@@ -51,9 +44,13 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         return _activeCertificates[index]; // Return the token ID at the specified index
     }
 
-    function mintCertificate(address recipient, string memory metadataURI, uint256 expirationTimestamps) public onlyRegisteredIssuer returns (uint256) {
+    function mintCertificate(address recipient, string memory metadataURI, uint256 expirationTimestamps, bytes32 fileHash) public onlyRegisteredIssuer returns (uint256) {
         _tokenIds++; // Increment the token ID for each new certificate
         uint256 newTokenId = _tokenIds; // Generate a new token ID
+
+        // Store both mapping
+        fileHashToTokenId[fileHash] = newTokenId;
+        tokenIdToFileHash[newTokenId] = fileHash;
 
         _mint(recipient, newTokenId); // Mint the NFT to the recipient
         _setTokenURI(newTokenId, metadataURI); // Set metadata URI for the certificate
@@ -62,6 +59,22 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
 
         return newTokenId;
     }
+
+    function verifyByHash(bytes32 fileHash) external view returns (
+        bool isValid,
+        uint256 tokenId,
+        address owner
+    ) {
+        tokenId = fileHashToTokenId[fileHash];
+        if (tokenId == 0) return (false, 0, address(0));
+
+        owner = ownerOf(tokenId);
+        bool isExpireds = block.timestamp >= _expirationTimestamps[tokenId];
+        isValid = !_revoked[tokenId] && !isExpireds;
+
+        return (isValid, tokenId, owner);  
+    }
+
 
     function revokeCertificate(uint256 tokenId) public onlyRegisteredIssuer {
         require(_exists(tokenId), "CertificateNFT: Token does not exist");

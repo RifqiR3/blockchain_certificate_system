@@ -1,7 +1,7 @@
 // components/certificate-file-preview.tsx
 "use client";
 
-import { FileText, ImageIcon, Download } from "lucide-react";
+import { FileText, Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@radix-ui/react-dropdown-menu";
 
@@ -54,7 +54,7 @@ export function CertificateFilePreview({ ipfsHash }: { ipfsHash: string }) {
               className="mt-4 text-black hover:cursor-pointer"
               onClick={() => window.open(ipfsUrl, "_blank")}
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Eye className="h-4 w-4 mr-2" />
               View Document
             </Button>
           </div>

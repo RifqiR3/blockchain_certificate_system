@@ -35,6 +35,7 @@ interface Certificate {
   ipfsHash?: string;
   isRevoked?: boolean;
   isExpired?: boolean;
+  metadataURI: string;
 }
 
 interface CertificateModalsProps {
@@ -151,7 +152,7 @@ export function CertificateModals({
           return;
         }
 
-        const { metadataUri } = await uploadRes.json();
+        const { metadataUri, fileHash } = await uploadRes.json();
         console.log("✅ IPFS URI received:", metadataUri);
 
         const expirationTimestamp = localFormData.expiryDate
@@ -161,7 +162,8 @@ export function CertificateModals({
         const tx = await contract.mintCertificate(
           localFormData.holder,
           metadataUri,
-          expirationTimestamp
+          expirationTimestamp,
+          "0x" + fileHash
         );
 
         await tx.wait();
@@ -437,8 +439,17 @@ export function CertificateModals({
                 </div>
                 <div className="md:col-span-2">
                   <p className="text-slate-400">Metadata URI</p>
-                  <p className="font-mono text-blue-400 break-all text-xs">
-                    {selectedCertificate.ipfsHash}
+                  <p className="font-mono text-blue-400 break-all text-xs hover:underline">
+                    <a
+                      href={`https://ipfs.io/ipfs/${selectedCertificate.metadataURI?.replace(
+                        "ipfs://",
+                        ""
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {selectedCertificate.metadataURI}
+                    </a>
                   </p>
                 </div>
               </div>
