@@ -121,7 +121,21 @@ export function CertificateModals({
           return;
         }
 
+        if (!selectedFile) {
+          alert("Please upload a certificate file.");
+          return;
+        }
+
         console.log("Creating contract instance...");
+
+        const fileBuffer = await selectedFile.arrayBuffer();
+        const hashArray = Array.from(
+          new Uint8Array(await crypto.subtle.digest("SHA-256", fileBuffer))
+        );
+        const fileHash = hashArray
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+
         // Create contract instance
         const contract = new ethers.Contract(
           CONTRACT_ADDRESS,
@@ -129,9 +143,36 @@ export function CertificateModals({
           signer
         );
 
-        if (!selectedFile) {
-          alert("Please upload a certificate file.");
-          return;
+        // Check for duplicate
+        const [isDuplicate, existingTokenId] = await contract.verifyByHash(
+          "0x" + fileHash
+        );
+
+        if (isDuplicate) {
+          try {
+            const existingOwner = await contract.ownerOf(existingTokenId);
+
+            toast.error(
+              `This certificate file already exists! Token ID: ${existingTokenId.toString()}, Owner: ${existingOwner.slice(
+                0,
+                8
+              )}...`,
+              {
+                className:
+                  "!bg-red-600/40 !text-red-300 !border !border-red-400/30",
+                style: {
+                  backgroundColor: "transparent",
+                  color: "inherit",
+                  border: "none",
+                },
+                duration: 5000,
+              }
+            );
+            return;
+          } catch (error) {
+            console.error("Failed to check certificate Error", error);
+            return;
+          }
         }
 
         const formData = new FormData();
@@ -152,7 +193,8 @@ export function CertificateModals({
           return;
         }
 
-        const { metadataUri, fileHash } = await uploadRes.json();
+        const { metadataUri, fileHash: returnedFileHash } =
+          await uploadRes.json();
         console.log("✅ IPFS URI received:", metadataUri);
 
         const expirationTimestamp = localFormData.expiryDate

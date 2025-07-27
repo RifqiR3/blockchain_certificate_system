@@ -169,7 +169,7 @@ export function CertificateFileUpload({
                   {isUploading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Uploading to IPFS...</span>
+                      <span>Uploading...</span>
                     </div>
                   ) : (
                     <>
@@ -278,7 +278,7 @@ export function CertificateFileUpload({
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                   <p className="text-green-300 text-sm font-medium">
-                    Stored on IPFS
+                    This file will be stored on IPFS
                   </p>
                 </div>
                 <p className="text-green-200 text-xs mt-1 font-mono break-all">

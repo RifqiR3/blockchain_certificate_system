@@ -12,12 +12,14 @@ import {
   Upload,
   ImageIcon,
   X,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster, toast } from "sonner";
+import Link from "next/link";
 import { ethers } from "ethers";
 import CertificateNFT from "@/contracts/CertificateNFT.json";
 
@@ -90,7 +92,7 @@ export default function CertificateVerification() {
       try {
         // Fetch related metadata
         tokenURI = await contract.tokenURI(tokenId);
-        isExpired = await contract.isExpiredOfficial(tokenId);
+        isExpired = await contract.isExpired(tokenId);
         isRevoked = await contract.isRevoked(tokenId);
       } catch (err) {
         console.error("❌ Failed to fetch token data:", err);
@@ -370,6 +372,15 @@ export default function CertificateVerification() {
           <Shield className="h-8 w-8 text-purple-400" />
           <h1 className="text-2xl font-bold text-white">SealChain</h1>
         </div>
+
+        <Link href={"/user"}>
+          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-2 shadow-lg hover:shadow-xl transition-all duration-200 group hover:cursor-pointer">
+            <div className="flex items-center space-x-2">
+              <span>Have certificates? View them here</span>
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+            </div>
+          </Button>
+        </Link>
       </header>
 
       {/* Main Content */}
@@ -497,7 +508,7 @@ export default function CertificateVerification() {
                           <input
                             id="certificate-image-input"
                             type="file"
-                            accept=".jpg,.png,.pdf"
+                            accept=".jpg,.jpeg,.png,.pdf"
                             onChange={handleFileInput}
                             className="hidden"
                           />
@@ -544,7 +555,9 @@ export default function CertificateVerification() {
                               <p className="text-blue-200 text-xs mt-1">
                                 File: {uploadedImage?.name} (
                                 {(
-                                  uploadedImage?.size || 0 / 1024 / 1024
+                                  (uploadedImage?.size || 0) /
+                                  1024 /
+                                  1024
                                 ).toFixed(2)}{" "}
                                 MB)
                               </p>
@@ -654,6 +667,10 @@ export default function CertificateVerification() {
                           <p className="text-sm text-slate-400">Expiry Date</p>
                           <p>{certificateData.expiryDate}</p>
                         </div>
+                        <div>
+                          <p className="text-sm text-slate-400">Status</p>
+                          <p>{certificateData.status}</p>
+                        </div>
                       </div>
                       {certificateData.imageUrl &&
                         certificateData?.tokenId !== "-" && (
@@ -676,25 +693,9 @@ export default function CertificateVerification() {
                     <div className="space-y-4">
                       <p className="text-slate-300">
                         The certificate could not be verified. Please check the{" "}
-                        {activeTab === "uri" ? "URI or ID" : "image"} and try
+                        {activeTab === "uri" ? "URI or ID" : "file"} and try
                         again.
                       </p>
-                      {activeTab === "image" && (
-                        <div className="bg-yellow-900/20 border border-yellow-400/30 rounded-lg p-3">
-                          <div className="flex items-center space-x-2">
-                            <AlertCircle className="h-4 w-4 text-yellow-400" />
-                            <p className="text-yellow-300 text-sm font-medium">
-                              Image Verification Tips
-                            </p>
-                          </div>
-                          <ul className="text-yellow-200 text-sm mt-2 ml-4 space-y-1">
-                            <li>• Ensure the image is clear and well-lit</li>
-                            <li>• Make sure all text is readable</li>
-                            <li>• Avoid shadows or reflections</li>
-                            <li>• Use a high-resolution image</li>
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   )}
 

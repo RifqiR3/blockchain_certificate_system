@@ -63,7 +63,7 @@ export default function AdminDashboard() {
     total: 0,
     active: 0,
     revoked: 0,
-    issuedByYou: 0,
+    expired: 0,
   });
 
   useEffect(() => {
@@ -161,8 +161,7 @@ export default function AdminDashboard() {
             (c) => !c.isRevoked && !c.isExpired
           ).length,
           revoked: fetchedCertificates.filter((c) => c.isRevoked).length,
-          issuedByYou: fetchedCertificates.filter((c) => c.issuer === address)
-            .length,
+          expired: fetchedCertificates.filter((c) => c.isExpired).length,
         });
       } catch (error) {
         console.error("Failed to fetch certificates:", error);
@@ -576,8 +575,8 @@ export default function AdminDashboard() {
                 icon={XCircle}
               />
               <StatCard
-                title="Total Users"
-                value={certificateStats.issuedByYou.toLocaleString()}
+                title="Expired Certificates"
+                value={certificateStats.expired.toLocaleString()}
                 icon={Users}
               />
             </div>

@@ -153,7 +153,7 @@ export default function StudentDashboard() {
           }
 
           const metadata = await res.json();
-          const isExpired = await contract.isExpiredOfficial(tokenId);
+          const isExpired = await contract.isExpired(tokenId);
           const isRevoked = await contract.isRevoked(tokenId);
 
           certs.push({
