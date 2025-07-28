@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("CertificateNFT - Chainlink Automation Test", function () {
-  this.timeout(80000); // just in case
+  this.timeout(80000);
 
   let contract, owner, user;
   const testMetadata = "ipfs://testhash";
@@ -35,12 +35,12 @@ describe("CertificateNFT - Chainlink Automation Test", function () {
     const tokenA = 1;
     const tokenB = 2;
 
-    // ⏩ Fast-forward 65 seconds
-    console.log("⏩ Advancing time by 65 seconds...");
+    // Fast-forward 65 seconds
+    console.log("Advancing time by 65 seconds...");
     await ethers.provider.send("evm_increaseTime", [65]);
     await ethers.provider.send("evm_mine");
 
-    // 🔍 CheckUpkeep
+    // CheckUpkeep
     const [upkeepNeeded, performData] = await contract.checkUpkeep("0x");
     expect(upkeepNeeded).to.equal(true);
 
