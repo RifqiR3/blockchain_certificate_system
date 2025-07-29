@@ -11,7 +11,8 @@
   "license": "ISC",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.24.0"
+    "hardhat": "^2.24.0",
+    "hardhat-deploy": "^1.0.4"
   },
   "dependencies": {
     "@chainlink/contracts": "^1.4.0",

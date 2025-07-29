@@ -200,9 +200,12 @@ export default function CertificateVerification() {
         "0x" + fileHash
       );
 
-      if (!isValid) {
-        return { valid: false };
-      }
+      // if (!isValid) {
+      //   return { valid: false };
+      // }
+
+      const isExpired = await contract.isExpired(tokenId);
+      const isRevoked = await contract.isRevoked(tokenId);
 
       // Fetch metada from IPFS
       const metadataURI = await contract.tokenURI(tokenId);
@@ -219,6 +222,12 @@ export default function CertificateVerification() {
         }
       }
 
+      let status: "valid" | "expired" | "revoked" = "valid";
+      if (isRevoked) {
+        status = "revoked";
+      } else if (isExpired) {
+        status = "expired";
+      }
       return {
         valid: true,
         tokenId: tokenId.toString(),
@@ -230,6 +239,7 @@ export default function CertificateVerification() {
         expiryDate: metadata.expiryDate,
         ipfsHash: metadataURI,
         imageUrl: metadata.file.replace("ipfs://", "https://ipfs.io/ipfs/"),
+        status: status,
       };
     } catch (error) {
       console.error("Verification failed:", error);
@@ -255,7 +265,7 @@ export default function CertificateVerification() {
         issueDate: result.issueDate,
         expiryDate: result.expiryDate,
         ipfsHash: result.ipfsHash,
-        status: "valid",
+        status: result.status ?? "unknown",
         imageUrl: result.imageUrl,
       });
     } else {

@@ -22,9 +22,13 @@ export async function POST(req: NextRequest) {
 
   try {
     // Upload certificate file
+    const cleanFileName = `${name.replace(
+      /[^a-zA-Z0-9\s]/g,
+      "_"
+    )}_certificate.${file.name.split(".").pop()}`;
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const fileForm = new FormData();
-    fileForm.append("file", new Blob([fileBuffer]), file.name);
+    fileForm.append("file", new Blob([fileBuffer]), cleanFileName);
 
     const fileRes = await axios.post(
       "https://api.pinata.cloud/pinning/pinFileToIPFS",
@@ -37,6 +41,7 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    // Calculate hash
     const hashArray = Array.from(
       new Uint8Array(
         await crypto.subtle.digest("SHA-256", await file.arrayBuffer())
@@ -65,9 +70,19 @@ export async function POST(req: NextRequest) {
       ],
     };
 
+    const metadataFileName = `${name.replace(
+      /[^a-zA-Z0-9\s]/g,
+      "_"
+    )}_metadata.json`;
+
     const jsonRes = await axios.post(
       "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-      metadata,
+      {
+        pinataContent: metadata,
+        pinataMetadata: {
+          name: metadataFileName,
+        },
+      },
       {
         headers: {
           pinata_api_key: apiKey,
