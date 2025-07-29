@@ -5,7 +5,7 @@ async function main() {
   let block = await ethers.provider.getBlock("latest");
   console.log(new Date(block.timestamp * 1000));
 
-  const timeToAdd = 9 * 24 * 60 * 60;
+  const timeToAdd = 7 * 24 * 60 * 60;
   await network.provider.send("evm_increaseTime", [timeToAdd]);
   await network.provider.send("evm_mine");
 

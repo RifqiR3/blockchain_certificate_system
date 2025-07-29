@@ -200,9 +200,9 @@ export default function CertificateVerification() {
         "0x" + fileHash
       );
 
-      // if (!isValid) {
-      //   return { valid: false };
-      // }
+      if (!isValid) {
+        return { valid: false };
+      }
 
       const isExpired = await contract.isExpired(tokenId);
       const isRevoked = await contract.isRevoked(tokenId);

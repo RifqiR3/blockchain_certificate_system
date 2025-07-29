@@ -69,8 +69,7 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         if (tokenId == 0) return (false, 0, address(0));
 
         owner = ownerOf(tokenId);
-        bool isExpireds = block.timestamp >= _expirationTimestamps[tokenId];
-        isValid = !_revoked[tokenId] && !isExpireds;
+        isValid = owner != address(0);
 
         return (isValid, tokenId, owner);  
     }

@@ -25,17 +25,18 @@ const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 
 interface Certificate {
   id: string;
+  tokenId: string;
   holder: string;
-  course: string;
-  issueDate: string;
-  status: string;
-  expiryDate?: string;
-  issuer?: string;
-  description?: string;
-  ipfsHash?: string;
-  isRevoked?: boolean;
-  isExpired?: boolean;
+  issuer: string;
   metadataURI: string;
+  ipfsHash: string;
+  issueDate: string;
+  expirationDate: string;
+  status: string;
+  isRevoked: boolean;
+  isExpired: boolean;
+  course?: string;
+  description?: string;
 }
 
 interface CertificateModalsProps {
@@ -455,24 +456,14 @@ export function CertificateModals({
                 </div>
                 <div>
                   <p className="text-slate-400">Issue Date</p>
+                  <p className="text-white">{selectedCertificate.issueDate}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Expiration Date</p>
                   <p className="text-white">
-                    {new Date(
-                      selectedCertificate.issueDate * 1000
-                    ).toLocaleString()}
+                    {selectedCertificate.expirationDate}
                   </p>
                 </div>
-                {selectedCertificate.expiryDate &&
-                  !isNaN(Number(selectedCertificate.expiryDate)) &&
-                  Number(selectedCertificate.expiryDate) > 0 && (
-                    <div>
-                      <p className="text-slate-400">Expiration Date</p>
-                      <p className="text-white">
-                        {new Date(
-                          Number(selectedCertificate.expiryDate) * 1000
-                        ).toLocaleString()}
-                      </p>
-                    </div>
-                  )}
                 <div className="md:col-span-2">
                   <p className="text-slate-400">Holder Address</p>
                   <p className="font-mono text-green-400 break-all">

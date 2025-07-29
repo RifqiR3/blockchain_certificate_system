@@ -42,8 +42,9 @@ interface Certificate {
   issuer: string;
   metadataURI: string;
   ipfsHash: string;
-  issueDate: number;
-  expirationDate: number;
+  issueDate: string;
+  expirationDate: string;
+  status: string;
   isRevoked: boolean;
   isExpired: boolean;
   course?: string;
@@ -74,10 +75,14 @@ export default function AdminDashboard() {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const contract = new ethers.Contract(
-          CONTRACT_ADDRESS,
+          process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
           CertificateNFT.abi,
           provider
         );
+
+        const block = await provider.getBlock("latest");
+        console.log("Current block timestamp:", block?.timestamp);
+        console.log("Current block number:", block?.number);
 
         // Get count and convert to number
         const totalCountBigInt = await contract.getActiveCertificateCount();
@@ -98,25 +103,34 @@ export default function AdminDashboard() {
                 .then(async (tokenId: bigint) => {
                   const tokenIdStr = tokenId.toString();
 
-                  const [metadataURI, holder, isRevoked, expirationTimestamp] =
-                    await Promise.all([
-                      contract.tokenURI(tokenId),
-                      contract.ownerOf(tokenId),
-                      contract.isRevoked(tokenId),
-                      contract.getExpirationTimestamp(tokenId),
-                    ]);
+                  const [metadataURI, holder, isRevoked] = await Promise.all([
+                    contract.tokenURI(tokenId),
+                    contract.ownerOf(tokenId),
+                    contract.isRevoked(tokenId),
+                  ]);
 
                   const ipfsHash = metadataURI.replace("ipfs://", "");
-                  const expirationDate = Number(expirationTimestamp);
-                  const isExpired =
-                    expirationDate > 0
-                      ? expirationDate < Math.floor(Date.now() / 1000)
-                      : false;
+                  const isExpired = await contract.isExpired(tokenId);
+                  console.log("Querying tokenId:", tokenId);
+                  console.log(isExpired);
+                  let status = "";
+
+                  if (isExpired) {
+                    status = "expired";
+                  } else if (isRevoked) {
+                    status = "revoked";
+                  } else {
+                    status = "valid";
+                  }
+
+                  console.log(status);
 
                   // Fetch metadata
                   let course = `Certificate ${tokenIdStr}`;
                   let description = "";
                   let file: string = "";
+                  let issueDate = "";
+                  let expirationDate = "";
                   try {
                     const res = await fetch(`https://ipfs.io/ipfs/${ipfsHash}`);
                     if (res.ok) {
@@ -124,6 +138,8 @@ export default function AdminDashboard() {
                       course = metadata.name || course;
                       description = metadata.description || "";
                       file = metadata.file;
+                      issueDate = metadata.issueDate;
+                      expirationDate = metadata.expiryDate;
                     }
                   } catch (error) {
                     console.error("Error fetching metadata:", error);
@@ -136,11 +152,9 @@ export default function AdminDashboard() {
                     issuer: address || "",
                     metadataURI,
                     ipfsHash: file,
-                    issueDate:
-                      expirationDate > 0
-                        ? expirationDate - 31536000
-                        : Math.floor(Date.now() / 1000),
+                    issueDate,
                     expirationDate,
+                    status,
                     isRevoked,
                     isExpired,
                     course,
@@ -621,15 +635,6 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {certificates.slice(0, 5).map((cert) => {
-                      const issueDate = new Date(cert.issueDate * 1000)
-                        .toISOString()
-                        .split("T")[0];
-                      const status = cert.isRevoked
-                        ? "revoked"
-                        : cert.expirationDate < Math.floor(Date.now() / 1000)
-                        ? "expired"
-                        : "active";
-
                       return (
                         <div
                           key={cert.id}
@@ -642,15 +647,21 @@ export default function AdminDashboard() {
                               </p>
                               <Badge
                                 variant={
-                                  status === "active"
+                                  cert.status === "valid"
                                     ? "default"
-                                    : status === "expired"
+                                    : cert.status === "expired"
                                     ? "secondary"
                                     : "destructive"
                                 }
-                                className="text-xs"
+                                className={
+                                  cert.status === "valid"
+                                    ? "bg-green-600/20 text-green-300 border-green-400/30"
+                                    : cert.status === "expired"
+                                    ? "text-xs bg-yellow-600/20 text-yellow-300 border-yellow-400/30"
+                                    : "text-xs bg-red-600/20 text-red-300 border-red-400/30"
+                                }
                               >
-                                {status}
+                                {cert.status}
                               </Badge>
                             </div>
                             <p className="text-white font-medium mt-1">
@@ -661,7 +672,7 @@ export default function AdminDashboard() {
                               {cert.holder.slice(-4)}
                             </p>
                             <p className="text-slate-500 text-xs mt-1">
-                              Issued: {issueDate}
+                              Issued: {cert.issueDate}
                             </p>
                           </div>
                           <DropdownMenu>
@@ -791,12 +802,19 @@ export default function AdminDashboard() {
                                     ? "secondary"
                                     : "default"
                                 }
+                                className={
+                                  cert.status === "valid"
+                                    ? "bg-green-600/20 text-green-300 border-green-400/30"
+                                    : cert.status === "expired"
+                                    ? "text-xs bg-yellow-600/20 text-yellow-300 border-yellow-400/30"
+                                    : "text-xs bg-red-600/20 text-red-300 border-red-400/30"
+                                }
                               >
                                 {cert.isRevoked
                                   ? "Revoked"
                                   : cert.isExpired
                                   ? "Expired"
-                                  : "Active"}
+                                  : "Valid"}
                               </Badge>
                             </div>
                             <p className="text-white font-medium mt-1">
@@ -813,23 +831,17 @@ export default function AdminDashboard() {
                               <div>
                                 <p className="text-slate-400 text-xs">Issued</p>
                                 <p className="text-slate-300 text-sm">
-                                  {new Date(
-                                    cert.issueDate * 1000
-                                  ).toLocaleDateString()}
+                                  {cert.issueDate}
                                 </p>
                               </div>
-                              {cert.expirationDate > 0 && (
-                                <div>
-                                  <p className="text-slate-400 text-xs">
-                                    Expires
-                                  </p>
-                                  <p className="text-slate-300 text-sm">
-                                    {new Date(
-                                      cert.expirationDate * 1000
-                                    ).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              )}
+                              <div>
+                                <p className="text-slate-400 text-xs">
+                                  Expired
+                                </p>
+                                <p className="text-slate-300 text-sm">
+                                  {cert.expirationDate}
+                                </p>
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
