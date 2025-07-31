@@ -209,7 +209,9 @@ export function CertificateModals({
           "0x" + fileHash
         );
 
-        await tx.wait();
+        const receipt = await tx.wait();
+
+        console.log("Gas used:", receipt.gasUsed.toString());
 
         toast.success("Certificate minted successfully!", {
           className:

@@ -52,7 +52,7 @@ contract CertificateNFT is ERC721URIStorage, Ownable, AutomationCompatibleInterf
         fileHashToTokenId[fileHash] = newTokenId;
         tokenIdToFileHash[newTokenId] = fileHash;
 
-        _mint(recipient, newTokenId); // Mint the NFT to the recipient
+        _mint(recipient, newTokenId); // Mint the SBT to the recipient
         _setTokenURI(newTokenId, metadataURI); // Set metadata URI for the certificate
         _expirationTimestamps[newTokenId] = expirationTimestamps; // Set expiration timestamp for the certificate
         _activeCertificates.push(newTokenId); // Add to active certificates to track them

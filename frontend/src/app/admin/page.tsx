@@ -80,10 +80,6 @@ export default function AdminDashboard() {
           provider
         );
 
-        const block = await provider.getBlock("latest");
-        console.log("Current block timestamp:", block?.timestamp);
-        console.log("Current block number:", block?.number);
-
         // Get count and convert to number
         const totalCountBigInt = await contract.getActiveCertificateCount();
         const totalCount = Number(totalCountBigInt);
@@ -111,8 +107,7 @@ export default function AdminDashboard() {
 
                   const ipfsHash = metadataURI.replace("ipfs://", "");
                   const isExpired = await contract.isExpired(tokenId);
-                  console.log("Querying tokenId:", tokenId);
-                  console.log(isExpired);
+
                   let status = "";
 
                   if (isExpired) {
@@ -122,8 +117,6 @@ export default function AdminDashboard() {
                   } else {
                     status = "valid";
                   }
-
-                  console.log(status);
 
                   // Fetch metadata
                   let course = `Certificate ${tokenIdStr}`;

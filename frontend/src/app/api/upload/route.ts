@@ -63,11 +63,6 @@ export async function POST(req: NextRequest) {
       expiryDate,
       file: fileIpfsUri,
       fileHash: `sha256:${fileHash}`,
-      attributes: [
-        { trait_type: "Issuer", value: issuer },
-        { trait_type: "Issue Date", value: issueDate },
-        { trait_type: "Expiry Date", value: expiryDate },
-      ],
     };
 
     const metadataFileName = `${name.replace(
