@@ -450,6 +450,20 @@ export default function AdminDashboard() {
           >
             Try Again
           </Button>
+          <ConnectKitButton.Custom>
+            {({ show }) => {
+              return (
+                <Button
+                  onClick={show}
+                  variant="outline"
+                  className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 hover:cursor-pointer"
+                >
+                  <Wallet className="h-4 w-4" />
+                  <span>Wallet Settings</span>
+                </Button>
+              );
+            }}
+          </ConnectKitButton.Custom>
         </div>
       </div>
     );
@@ -505,7 +519,7 @@ export default function AdminDashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-56 bg-slate-800/95 backdrop-blur-sm border-slate-700"
+              className="w-56 bg-slate-800/95 backdrop-blur-sm border-slate-700 text-white"
               align="end"
             >
               <DropdownMenuItem className="p-0">
@@ -515,7 +529,7 @@ export default function AdminDashboard() {
                       <Button
                         onClick={show}
                         variant="outline"
-                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2"
+                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 hover:cursor-pointer"
                       >
                         <Wallet className="h-4 w-4" />
                         <span>Wallet Settings</span>

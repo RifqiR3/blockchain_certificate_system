@@ -130,7 +130,7 @@ export default function StudentDashboard() {
       const contract = new ethers.Contract(
         process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
         CertificateNFT.abi,
-        signer
+        signer,
       );
 
       const total = await contract.getActiveCertificateCount();
@@ -168,7 +168,7 @@ export default function StudentDashboard() {
             status: isRevoked ? "revoked" : isExpired ? "expired" : "valid",
             fileUrl: (metadata.file || "").replace(
               "ipfs://",
-              "https://ipfs.io/ipfs/"
+              "https://ipfs.io/ipfs/",
             ),
           });
         } catch (error) {
@@ -475,7 +475,7 @@ export default function StudentDashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-56 bg-slate-800/95 backdrop-blur-sm border-slate-700"
+              className="w-56 bg-slate-800/95 backdrop-blur-sm border-slate-700 text-white"
               align="end"
             >
               <DropdownMenuItem className="p-0">
@@ -485,7 +485,7 @@ export default function StudentDashboard() {
                       <Button
                         onClick={show}
                         variant="outline"
-                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2"
+                        className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 hover:cursor-pointer"
                       >
                         <Wallet className="h-4 w-4" />
                         <span>Wallet Settings</span>
@@ -754,7 +754,7 @@ export default function StudentDashboard() {
                             onClick={() =>
                               downloadFile(
                                 certificate.fileUrl,
-                                certificate.name
+                                certificate.name,
                               )
                             }
                           >

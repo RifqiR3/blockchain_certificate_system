@@ -502,6 +502,20 @@ export default function RegisterIssuer() {
           >
             Back
           </Button>
+          <ConnectKitButton.Custom>
+            {({ show }) => {
+              return (
+                <Button
+                  onClick={show}
+                  variant="outline"
+                  className="w-full bg-transparent flex items-center space-x-2 px-3 py-2 hover:cursor-pointer"
+                >
+                  <Wallet className="h-4 w-4" />
+                  <span>Wallet Settings</span>
+                </Button>
+              );
+            }}
+          </ConnectKitButton.Custom>
         </div>
       </div>
     );

@@ -23,7 +23,7 @@ export function CertificateFileUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
-    value ? `https://ipfs.io/ipfs/${value}` : null
+    value ? `https://ipfs.io/ipfs/${value}` : null,
   );
 
   // Mock IPFS upload function - replace with actual IPFS client
@@ -75,7 +75,7 @@ export function CertificateFileUpload({
         alert("Upload failed. Please try again.");
       }
     },
-    [onChange]
+    [onChange],
   );
 
   const handleDrop = useCallback(
@@ -88,7 +88,7 @@ export function CertificateFileUpload({
         handleFileSelect(files[0]);
       }
     },
-    [handleFileSelect]
+    [handleFileSelect],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -108,12 +108,12 @@ export function CertificateFileUpload({
         handleFileSelect(files[0]);
       }
     },
-    [handleFileSelect]
+    [handleFileSelect],
   );
 
   const handleRemove = useCallback(() => {
     setPreviewUrl(null);
-    onChange?.("");
+    onChange?.(null);
   }, [onChange]);
 
   const isImage =
