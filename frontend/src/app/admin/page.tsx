@@ -77,7 +77,7 @@ export default function AdminDashboard() {
         const contract = new ethers.Contract(
           process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
           CertificateNFT.abi,
-          provider
+          provider,
         );
 
         // Get count and convert to number
@@ -153,7 +153,7 @@ export default function AdminDashboard() {
                     course,
                     description,
                   };
-                })
+                }),
             );
           }
 
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
         setCertificateStats({
           total: fetchedCertificates.length,
           active: fetchedCertificates.filter(
-            (c) => !c.isRevoked && !c.isExpired
+            (c) => !c.isRevoked && !c.isExpired,
           ).length,
           revoked: fetchedCertificates.filter((c) => c.isRevoked).length,
           expired: fetchedCertificates.filter((c) => c.isExpired).length,
@@ -194,7 +194,7 @@ export default function AdminDashboard() {
         const contract = new ethers.Contract(
           CONTRACT_ADDRESS,
           CertificateNFT.abi,
-          provider
+          provider,
         );
 
         const isRegistered = await contract.isRegisteredIssuer(address);
@@ -221,7 +221,8 @@ export default function AdminDashboard() {
   const [viewCertificateOpen, setViewCertificateOpen] = useState(false);
   const [editCertificateOpen, setEditCertificateOpen] = useState(false);
   const [revokeCertificateOpen, setRevokeCertificateOpen] = useState(false);
-  const [selectedCertificate, setSelectedCertificate] = useState<any>(null);
+  const [selectedCertificate, setSelectedCertificate] =
+    useState<Certificate | null>(null);
 
   const StatCard = ({
     title,
@@ -771,7 +772,7 @@ export default function AdminDashboard() {
                             .includes(searchQuery.toLowerCase()) ||
                           cert.metadataURI
                             .toLowerCase()
-                            .includes(searchQuery.toLowerCase())
+                            .includes(searchQuery.toLowerCase()),
                       )
                       .map((cert) => (
                         <div

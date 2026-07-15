@@ -153,14 +153,41 @@ export default function RegisterIssuer() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const parseEthereumError = (error: any): string => {
-    // Check for revert reason
-    if (error.reason) return error.reason;
+  interface EthereumError {
+    reason?: string;
+    message?: string;
+    data?:
+      | {
+          message?: string;
+          [key: string]: unknown;
+        }
+      | string;
+    error?: {
+      data?: {
+        message?: string;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  }
+
+  const parseEthereumError = (error: unknown): string => {
+    // Guard against null, undefined, or primitive types being thrown
+    if (typeof error !== "object" || error === null) {
+      return typeof error === "string" ? error : "Unknown error occurred";
+    }
+
+    // Safely cast to our custom interface now that we know it's an object
+    const err = error as EthereumError;
+
+    // Check for revert reason (common in Ethers v6 CallExceptionError)
+    if (err.reason) return err.reason;
 
     // Check for error data
-    if (error.data?.message) {
+    if (typeof err.data === "object" && err.data?.message) {
       try {
-        const revertReason = error.data.message.match(
+        const revertReason = err.data.message.match(
           /reverted with reason string '(.+?)'/,
         );
         if (revertReason) return revertReason[1];
@@ -169,13 +196,13 @@ export default function RegisterIssuer() {
       }
     }
 
-    // Check for JSON-RPC error
-    if (error.error?.data?.message) {
-      return error.error.data.message;
+    // Check for JSON-RPC error (MetaMask / EIP-1193 wrapped bullshit)
+    if (err.error?.data?.message) {
+      return err.error.data.message;
     }
 
     // Fallback to general error message
-    return error.message || "Unknown error occurred";
+    return err.message || "Unknown error occurred";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
