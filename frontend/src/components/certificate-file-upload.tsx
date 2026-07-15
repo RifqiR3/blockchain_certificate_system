@@ -1,15 +1,14 @@
 "use client";
 
 import type React from "react";
-
-import { useState, useCallback } from "react";
-import { Upload, type File, ImageIcon, X, Download, Eye } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Upload, ImageIcon, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface CertificateFileUploadProps {
-  value?: File | null; // IPFS hash or URL
-  onChange?: (file: File | null) => void; // Callback when file is selected or removed
+  value?: File | string | null; // Can be a File object (new) or string (existing IPFS hash)
+  onChange?: (file: File | null) => void;
   disabled?: boolean;
   showPreview?: boolean;
 }
@@ -21,32 +20,31 @@ export function CertificateFileUpload({
   showPreview = true,
 }: CertificateFileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(
-    value ? `https://ipfs.io/ipfs/${value}` : null,
-  );
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Mock IPFS upload function - replace with actual IPFS client
-  const uploadToIPFS = async (file: File): Promise<string> => {
-    setIsUploading(true);
+  // Sync internal preview state with the parent's value prop
+  useEffect(() => {
+    if (!value) {
+      setPreviewUrl(null);
+      return;
+    }
 
-    // Simulate upload delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Mock IPFS hash - in real implementation, use IPFS client
-    const mockHash = `Qm${Math.random()
-      .toString(36)
-      .substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-
-    setIsUploading(false);
-    return mockHash;
-  };
+    if (value instanceof File) {
+      // Create a local preview for the newly selected file
+      const objectUrl = URL.createObjectURL(value);
+      setPreviewUrl(objectUrl);
+      // Cleanup to prevent memory leaks
+      return () => URL.revokeObjectURL(objectUrl);
+    } else if (typeof value === "string") {
+      // If it's a string, assume it's an existing IPFS hash
+      setPreviewUrl(`https://ipfs.io/ipfs/${value.replace("ipfs://", "")}`);
+    }
+  }, [value]);
 
   const handleFileSelect = useCallback(
-    async (file: File) => {
+    (file: File) => {
       if (!file) return;
 
-      // Validate file type - restrict to JPG, PNG, PDF only
       const validTypes = [
         "image/jpeg",
         "image/jpg",
@@ -58,22 +56,13 @@ export function CertificateFileUpload({
         return;
       }
 
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024 * 1024 * 1024) {
+      // Fix: 10MB is 10 * 1024 * 1024
+      if (file.size > 10 * 1024 * 1024) {
         alert("File size must be less than 10MB");
         return;
       }
 
-      try {
-        const ipfsHash = await uploadToIPFS(file);
-        const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
-
-        setPreviewUrl(ipfsUrl);
-        onChange?.(file);
-      } catch (error) {
-        console.error("Upload failed:", error);
-        alert("Upload failed. Please try again.");
-      }
+      onChange?.(file);
     },
     [onChange],
   );
@@ -82,11 +71,8 @@ export function CertificateFileUpload({
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-
       const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) {
-        handleFileSelect(files[0]);
-      }
+      if (files.length > 0) handleFileSelect(files[0]);
     },
     [handleFileSelect],
   );
@@ -104,25 +90,23 @@ export function CertificateFileUpload({
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
-      if (files && files.length > 0) {
-        handleFileSelect(files[0]);
-      }
+      if (files && files.length > 0) handleFileSelect(files[0]);
     },
     [handleFileSelect],
   );
 
   const handleRemove = useCallback(() => {
-    setPreviewUrl(null);
     onChange?.(null);
   }, [onChange]);
 
   const isImage =
     previewUrl &&
-    (previewUrl.includes(".jpg") ||
-      previewUrl.includes(".jpeg") ||
-      previewUrl.includes(".png") ||
-      previewUrl.includes(".gif"));
-  const isPDF = previewUrl && previewUrl.includes(".pdf");
+    (previewUrl.match(/\.(jpeg|jpg|gif|png)$/i) ||
+      previewUrl.startsWith("blob:"));
+  const isPDF =
+    previewUrl &&
+    (previewUrl.includes(".pdf") ||
+      (value instanceof File && value.type === "application/pdf"));
 
   return (
     <div className="space-y-4">
@@ -161,24 +145,14 @@ export function CertificateFileUpload({
                   type="button"
                   variant="outline"
                   className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 hover:cursor-pointer"
-                  disabled={disabled || isUploading}
+                  disabled={disabled}
                   onClick={() =>
                     document.getElementById("certificate-file-input")?.click()
                   }
                 >
-                  {isUploading ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Uploading...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Choose File
-                    </>
-                  )}
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose File
                 </Button>
-
                 <input
                   id="certificate-file-input"
                   type="file"
@@ -211,21 +185,6 @@ export function CertificateFileUpload({
                     <Eye className="h-4 w-4 mr-1" />
                     View
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = previewUrl;
-                      link.download = "certificate";
-                      link.click();
-                    }}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Download
-                  </Button>
                   {!disabled && (
                     <Button
                       type="button"
@@ -245,10 +204,9 @@ export function CertificateFileUpload({
               {isImage && (
                 <div className="relative bg-slate-900/50 rounded-lg p-4">
                   <img
-                    src={previewUrl || "/placeholder.svg"}
+                    src={previewUrl}
                     alt="Certificate preview"
                     className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg"
-                    onError={() => setPreviewUrl(null)}
                   />
                 </div>
               )}
@@ -264,27 +222,18 @@ export function CertificateFileUpload({
                 </div>
               )}
 
-              {/* Generic File Preview */}
-              {!isImage && !isPDF && (
-                <div className="bg-slate-900/50 rounded-lg p-8 text-center">
-                  <ImageIcon className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-                  <p className="text-white font-medium">Certificate File</p>
-                  <p className="text-slate-400 text-sm">Stored on IPFS</p>
-                </div>
-              )}
-
               {/* IPFS Info */}
               <div className="bg-green-900/20 border border-green-400/30 rounded-lg p-3">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                   <p className="text-green-300 text-sm font-medium">
-                    This file will be stored on IPFS
+                    {value instanceof File
+                      ? "Ready to be minted"
+                      : "Stored securely on IPFS"}
                   </p>
                 </div>
                 <p className="text-green-200 text-xs mt-1 font-mono break-all">
-                  {value instanceof File
-                    ? value.name
-                    : "Hash will be generated after upload"}
+                  {value instanceof File ? value.name : value}
                 </p>
               </div>
             </div>

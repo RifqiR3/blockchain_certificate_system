@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Shield,
   User,
@@ -67,118 +67,116 @@ export default function AdminDashboard() {
     expired: 0,
   });
 
-  useEffect(() => {
+  const fetchCertificates = useCallback(async () => {
     if (!isAuthorized || !address) return;
 
-    const fetchCertificates = async () => {
-      setLoadingCertificates(true);
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const contract = new ethers.Contract(
-          process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
-          CertificateNFT.abi,
-          provider,
-        );
+    setLoadingCertificates(true);
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+        CertificateNFT.abi,
+        provider,
+      );
 
-        // Get count and convert to number
-        const totalCountBigInt = await contract.getActiveCertificateCount();
-        const totalCount = Number(totalCountBigInt);
-        console.log(`Found ${totalCount} certificates`);
+      // Get count and convert to number
+      const totalCountBigInt = await contract.getActiveCertificateCount();
+      const totalCount = Number(totalCountBigInt);
+      console.log(`Found ${totalCount} certificates`);
 
-        const fetchedCertificates: Certificate[] = [];
-        const batchSize = 10;
+      const fetchedCertificates: Certificate[] = [];
+      const batchSize = 10;
 
-        for (let i = 0; i < totalCount; i += batchSize) {
-          const end = Math.min(i + batchSize, totalCount);
+      for (let i = 0; i < totalCount; i += batchSize) {
+        const end = Math.min(i + batchSize, totalCount);
 
-          const batchPromises = [];
-          for (let j = i; j < end; j++) {
-            batchPromises.push(
-              contract
-                .getActiveCertificateId(j)
-                .then(async (tokenId: bigint) => {
-                  const tokenIdStr = tokenId.toString();
+        const batchPromises = [];
+        for (let j = i; j < end; j++) {
+          batchPromises.push(
+            contract.getActiveCertificateId(j).then(async (tokenId: bigint) => {
+              const tokenIdStr = tokenId.toString();
 
-                  const [metadataURI, holder, isRevoked] = await Promise.all([
-                    contract.tokenURI(tokenId),
-                    contract.ownerOf(tokenId),
-                    contract.isRevoked(tokenId),
-                  ]);
+              const [metadataURI, holder, isRevoked] = await Promise.all([
+                contract.tokenURI(tokenId),
+                contract.ownerOf(tokenId),
+                contract.isRevoked(tokenId),
+              ]);
 
-                  const ipfsHash = metadataURI.replace("ipfs://", "");
-                  const isExpired = await contract.isExpired(tokenId);
+              const ipfsHash = metadataURI.replace("ipfs://", "");
+              const isExpired = await contract.isExpired(tokenId);
 
-                  let status = "";
+              let status = "";
 
-                  if (isExpired) {
-                    status = "expired";
-                  } else if (isRevoked) {
-                    status = "revoked";
-                  } else {
-                    status = "valid";
-                  }
+              if (isExpired) {
+                status = "expired";
+              } else if (isRevoked) {
+                status = "revoked";
+              } else {
+                status = "valid";
+              }
 
-                  // Fetch metadata
-                  let course = `Certificate ${tokenIdStr}`;
-                  let description = "";
-                  let file: string = "";
-                  let issueDate = "";
-                  let expirationDate = "";
-                  try {
-                    const res = await fetch(`https://ipfs.io/ipfs/${ipfsHash}`);
-                    if (res.ok) {
-                      const metadata = await res.json();
-                      course = metadata.name || course;
-                      description = metadata.description || "";
-                      file = metadata.file;
-                      issueDate = metadata.issueDate;
-                      expirationDate = metadata.expiryDate;
-                    }
-                  } catch (error) {
-                    console.error("Error fetching metadata:", error);
-                  }
+              // Fetch metadata
+              let course = `Certificate ${tokenIdStr}`;
+              let description = "";
+              let file: string = "";
+              let issueDate = "";
+              let expirationDate = "";
+              try {
+                const res = await fetch(`https://ipfs.io/ipfs/${ipfsHash}`);
+                if (res.ok) {
+                  const metadata = await res.json();
+                  course = metadata.name || course;
+                  description = metadata.description || "";
+                  file = metadata.file;
+                  issueDate = metadata.issueDate;
+                  expirationDate = metadata.expiryDate;
+                }
+              } catch (error) {
+                console.error("Error fetching metadata:", error);
+              }
 
-                  return {
-                    id: tokenIdStr,
-                    tokenId: tokenIdStr,
-                    holder,
-                    issuer: address || "",
-                    metadataURI,
-                    ipfsHash: file,
-                    issueDate,
-                    expirationDate,
-                    status,
-                    isRevoked,
-                    isExpired,
-                    course,
-                    description,
-                  };
-                }),
-            );
-          }
-
-          const batchResults = await Promise.all(batchPromises);
-          fetchedCertificates.push(...batchResults);
+              return {
+                id: tokenIdStr,
+                tokenId: tokenIdStr,
+                holder,
+                issuer: address || "",
+                metadataURI,
+                ipfsHash: file,
+                issueDate,
+                expirationDate,
+                status,
+                isRevoked,
+                isExpired,
+                course,
+                description,
+              };
+            }),
+          );
         }
 
-        setCertificates(fetchedCertificates);
-        setCertificateStats({
-          total: fetchedCertificates.length,
-          active: fetchedCertificates.filter(
-            (c) => !c.isRevoked && !c.isExpired,
-          ).length,
-          revoked: fetchedCertificates.filter((c) => c.isRevoked).length,
-          expired: fetchedCertificates.filter((c) => c.isExpired).length,
-        });
-      } catch (error) {
-        console.error("Failed to fetch certificates:", error);
-      } finally {
-        setLoadingCertificates(false);
+        const batchResults = await Promise.all(batchPromises);
+        fetchedCertificates.push(...batchResults);
       }
-    };
 
-    fetchCertificates();
+      setCertificates(fetchedCertificates);
+      setCertificateStats({
+        total: fetchedCertificates.length,
+        active: fetchedCertificates.filter((c) => !c.isRevoked && !c.isExpired)
+          .length,
+        revoked: fetchedCertificates.filter((c) => c.isRevoked).length,
+        expired: fetchedCertificates.filter((c) => c.isExpired).length,
+      });
+    } catch (error) {
+      console.error("Failed to fetch certificates:", error);
+    } finally {
+      setLoadingCertificates(false);
+    }
   }, [isAuthorized, address]);
+
+  // Use the extracted function on initial load
+  useEffect(() => {
+    fetchCertificates();
+  }, [fetchCertificates]);
 
   useEffect(() => {
     const checkIssuer = async () => {
@@ -745,6 +743,22 @@ export default function AdminDashboard() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
+
+                  <Button
+                    onClick={fetchCertificates}
+                    disabled={loadingCertificates}
+                    variant="outline"
+                    className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:cursor-pointer"
+                  >
+                    {loadingCertificates ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Refreshing...</span>
+                      </div>
+                    ) : (
+                      "Refresh"
+                    )}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>

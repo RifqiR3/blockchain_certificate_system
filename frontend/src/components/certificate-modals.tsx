@@ -131,7 +131,7 @@ export function CertificateModals({
 
         const fileBuffer = await selectedFile.arrayBuffer();
         const hashArray = Array.from(
-          new Uint8Array(await crypto.subtle.digest("SHA-256", fileBuffer))
+          new Uint8Array(await crypto.subtle.digest("SHA-256", fileBuffer)),
         );
         const fileHash = hashArray
           .map((b) => b.toString(16).padStart(2, "0"))
@@ -141,12 +141,12 @@ export function CertificateModals({
         const contract = new ethers.Contract(
           CONTRACT_ADDRESS,
           CertificateNFT.abi,
-          signer
+          signer,
         );
 
         // Check for duplicate
         const [isDuplicate, existingTokenId] = await contract.verifyByHash(
-          "0x" + fileHash
+          "0x" + fileHash,
         );
 
         if (isDuplicate) {
@@ -156,7 +156,7 @@ export function CertificateModals({
             toast.error(
               `This certificate file already exists! Token ID: ${existingTokenId.toString()}, Owner: ${existingOwner.slice(
                 0,
-                8
+                8,
               )}...`,
               {
                 className:
@@ -167,7 +167,7 @@ export function CertificateModals({
                   border: "none",
                 },
                 duration: 5000,
-              }
+              },
             );
             return;
           } catch (error) {
@@ -206,7 +206,7 @@ export function CertificateModals({
           localFormData.holder,
           metadataUri,
           expirationTimestamp,
-          "0x" + fileHash
+          "0x" + fileHash,
         );
 
         const receipt = await tx.wait();
@@ -236,7 +236,7 @@ export function CertificateModals({
           } else {
             alert(
               "❌ Failed to mint certificate: " +
-                (err as { message?: string }).message
+                (err as { message?: string }).message,
             );
           }
         } else {
@@ -478,7 +478,7 @@ export function CertificateModals({
                     <a
                       href={`https://ipfs.io/ipfs/${selectedCertificate.metadataURI?.replace(
                         "ipfs://",
-                        ""
+                        "",
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -535,7 +535,7 @@ export function CertificateModals({
       console.log(
         "Editing certificate:",
         selectedCertificate?.id,
-        localFormData
+        localFormData,
       );
       setEditCertificateOpen(false);
     };
@@ -670,7 +670,7 @@ export function CertificateModals({
         const contract = new ethers.Contract(
           CONTRACT_ADDRESS,
           CertificateNFT.abi,
-          signer
+          signer,
         );
 
         const tx = await contract.revokeCertificate(selectedCertificate.id);
@@ -694,7 +694,7 @@ export function CertificateModals({
         alert(
           `Failed to revoke certificate: ${
             error instanceof Error ? error.message : String(error)
-          }}`
+          }`,
         );
       } finally {
         setIsRevoking(false);
