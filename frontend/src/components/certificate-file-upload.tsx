@@ -59,7 +59,7 @@ export function CertificateFileUpload({
       }
 
       // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
+      if (file.size > 10 * 1024 * 1024 * 1024 * 1024) {
         alert("File size must be less than 10MB");
         return;
       }

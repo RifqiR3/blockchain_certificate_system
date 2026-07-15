@@ -84,14 +84,14 @@ export default function RegisterIssuer() {
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         CertificateNFT.abi,
-        provider
+        provider,
       );
 
       const fetchedIssuers: Issuer[] = [];
 
       try {
         const events = await contract.queryFilter(
-          contract.filters.IssuerRegistered()
+          contract.filters.IssuerRegistered(),
         );
         for (const event of events) {
           if ("args" in event && event.args) {
@@ -161,7 +161,7 @@ export default function RegisterIssuer() {
     if (error.data?.message) {
       try {
         const revertReason = error.data.message.match(
-          /reverted with reason string '(.+?)'/
+          /reverted with reason string '(.+?)'/,
         );
         if (revertReason) return revertReason[1];
       } catch (e) {
@@ -201,7 +201,7 @@ export default function RegisterIssuer() {
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         CertificateNFT.abi,
-        signer
+        signer,
       );
 
       const tx = await contract.registerIssuer(formData.address, formData.name);
@@ -253,7 +253,7 @@ export default function RegisterIssuer() {
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         CertificateNFT.abi,
-        signer
+        signer,
       );
 
       const tx = await contract.revokeIssuer(selectedIssuer.address);
@@ -776,8 +776,7 @@ export default function RegisterIssuer() {
                                           Wallet Address
                                         </p>
                                         <p className="text-white font-mono text-xs">
-                                          {issuer.address.slice(0, 6)}...
-                                          {issuer.address.slice(-4)}
+                                          {issuer.address}
                                         </p>
                                       </div>
                                     </div>

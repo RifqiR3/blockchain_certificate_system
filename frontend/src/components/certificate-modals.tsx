@@ -329,7 +329,7 @@ export function CertificateModals({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="expiryDate" className="text-slate-300">
-                  Expiry Date (Optional)
+                  Expiry Date
                 </Label>
                 <Input
                   id="expiryDate"
@@ -346,7 +346,7 @@ export function CertificateModals({
 
             <div className="space-y-2">
               <Label htmlFor="description" className="text-slate-300">
-                Description (Optional)
+                Description
               </Label>
               <Textarea
                 id="description"
