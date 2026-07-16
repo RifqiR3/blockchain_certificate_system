@@ -13,6 +13,7 @@ import {
   ImageIcon,
   X,
   ArrowRight,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +65,7 @@ export default function CertificateVerification() {
     const contract = new ethers.Contract(
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
       CertificateNFT.abi,
-      provider
+      provider,
     );
 
     const input = certificateInput.trim();
@@ -109,7 +110,7 @@ export default function CertificateVerification() {
 
       try {
         const metadataRes = await fetch(
-          tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/")
+          tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/"),
         );
         if (!metadataRes.ok) throw new Error("Failed to fetch IPFS metadata");
 
@@ -147,7 +148,7 @@ export default function CertificateVerification() {
 
       try {
         const metadataRes = await fetch(
-          uri.replace("ipfs://", "https://ipfs.io/ipfs/")
+          uri.replace("ipfs://", "https://ipfs.io/ipfs/"),
         );
         if (!metadataRes.ok) throw new Error("IPFS fetch failed");
 
@@ -179,7 +180,7 @@ export default function CertificateVerification() {
   const calculateFileHash = async (file: File): Promise<string> => {
     const buffer = await file.arrayBuffer();
     const hashArray = Array.from(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", buffer))
+      new Uint8Array(await crypto.subtle.digest("SHA-256", buffer)),
     );
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   };
@@ -194,10 +195,10 @@ export default function CertificateVerification() {
       const contract = new ethers.Contract(
         process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
         CertificateNFT.abi,
-        provider
+        provider,
       );
       const [isValid, tokenId, owner] = await contract.verifyByHash(
-        "0x" + fileHash
+        "0x" + fileHash,
       );
 
       if (!isValid) {
@@ -210,7 +211,7 @@ export default function CertificateVerification() {
       // Fetch metada from IPFS
       const metadataURI = await contract.tokenURI(tokenId);
       const metadataRes = await fetch(
-        metadataURI.replace("ipfs://", "https://ipfs.io/ipfs/")
+        metadataURI.replace("ipfs://", "https://ipfs.io/ipfs/"),
       );
       const metadata = await metadataRes.json();
 
@@ -383,14 +384,28 @@ export default function CertificateVerification() {
           <h1 className="text-2xl font-bold text-white">SealChain</h1>
         </div>
 
-        <Link href={"/user"}>
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-2 shadow-lg hover:shadow-xl transition-all duration-200 group hover:cursor-pointer">
-            <div className="flex items-center space-x-2">
-              <span>Have certificates? View them here</span>
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-            </div>
-          </Button>
-        </Link>
+        <div className="flex items-center space-x-4">
+          <Link href="/guide">
+            <Button
+              variant="outline"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-2 shadow-lg hover:shadow-xl transition-all duration-200 group hover:cursor-pointer hover:text-white border-none"
+            >
+              <div className="flex items-center space-x-2">
+                <BookOpen className="w-4 h-4 mr-2" />
+                <span>Read User Guide</span>
+              </div>
+            </Button>
+          </Link>
+
+          <Link href={"/user"}>
+            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-2 shadow-lg hover:shadow-xl transition-all duration-200 group hover:cursor-pointer">
+              <div className="flex items-center space-x-2">
+                <span>Have certificates? View them here</span>
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+              </div>
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {/* Main Content */}
