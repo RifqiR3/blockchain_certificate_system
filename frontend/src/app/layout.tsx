@@ -1,8 +1,20 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { Providers } from "@/lib/providers";
+import type { Metadata } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: {
+    default: "SealChain",
+    template: "%s | SealChain",
+  },
+  description: "Blockchain Certificate Management System",
+  icons: {
+    icon: "/icon.png",
+  },
+};
 
 export default function RootLayout({
   children,
